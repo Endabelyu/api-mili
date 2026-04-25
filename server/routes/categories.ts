@@ -14,5 +14,27 @@ app.get('/', async (c) => {
   return c.json({ items });
 });
 
+// POST /api/categories - Create a new category
+app.post('/', async (c) => {
+  const body = await c.req.json();
+  const { label, color, icon, type } = body;
+  
+  if (!label || !color || !type) {
+    return c.json({ error: 'Missing required fields' }, 400);
+  }
+
+  const id = label.toLowerCase().replace(/\s+/g, '-');
+  
+  const newItem = await db.insert(categories).values({
+    id,
+    label,
+    color,
+    icon: icon || '📦',
+    type,
+  }).returning();
+
+  return c.json(newItem[0]);
+});
+
 export default app;
 export type CategoriesApp = typeof app;

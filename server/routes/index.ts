@@ -6,6 +6,11 @@ import categoriesApp from './categories';
 import reportsApp from './reports';
 import exportApp from './export';
 import consentApp from './consent';
+import accountsApp from './accounts';
+import calendarApp from './calendar';
+import targetsApp from './targets';
+import scheduledApp from './scheduled';
+import notificationsApp from './notifications';
 
 const apiRouter = new Hono()
   .route('/auth', authApp)
@@ -14,6 +19,11 @@ const apiRouter = new Hono()
   .route('/categories', categoriesApp)
   .route('/reports', reportsApp)
   .route('/export', exportApp)
+  .route('/accounts', accountsApp)
+  .route('/calendar', calendarApp)
+  .route('/targets', targetsApp)
+  .route('/scheduled', scheduledApp)
+  .route('/notifications', notificationsApp)
   .route('/consent', consentApp);
 
 export default apiRouter;

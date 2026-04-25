@@ -19,6 +19,7 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
 const tests = [
   { name: 'API Tests', script: 'api-test.cjs', required: true },
+  { name: 'E2E Main Flow', command: 'npx playwright test tests/e2e/main-flow.spec.ts', required: true },
   { name: 'Security Scan', script: 'security-scan.cjs', required: false },
   { name: 'Performance Tests', script: 'performance-test.cjs', required: false },
   { name: 'Memory Leak Detection', script: 'memory-leak-test.cjs', required: false },
@@ -42,19 +43,28 @@ function runTest(test) {
     console.log('='.repeat(70));
     
     const startTime = Date.now();
-    const scriptPath = path.join(scriptsDir, test.script);
+    let child;
     
-    if (!fs.existsSync(scriptPath)) {
-      console.log(`⚠️  Script not found: ${test.script}`);
-      results.summary.skipped++;
-      resolve({ name: test.name, status: 'skipped', reason: 'Script not found' });
-      return;
+    if (test.command) {
+      const [cmd, ...args] = test.command.split(' ');
+      child = spawn(cmd, args, {
+        stdio: 'inherit',
+        shell: true,
+        env: { ...process.env, FORCE_COLOR: '1' },
+      });
+    } else {
+      const scriptPath = path.join(scriptsDir, test.script);
+      if (!fs.existsSync(scriptPath)) {
+        console.log(`⚠️  Script not found: ${test.script}`);
+        results.summary.skipped++;
+        resolve({ name: test.name, status: 'skipped', reason: 'Script not found' });
+        return;
+      }
+      child = spawn('node', [scriptPath], {
+        stdio: 'inherit',
+        env: { ...process.env, FORCE_COLOR: '1' },
+      });
     }
-    
-    const child = spawn('node', [scriptPath], {
-      stdio: 'inherit',
-      env: { ...process.env, FORCE_COLOR: '1' },
-    });
     
     child.on('close', (code) => {
       const duration = Date.now() - startTime;

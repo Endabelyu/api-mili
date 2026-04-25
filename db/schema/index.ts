@@ -4,3 +4,6 @@ export * from './budgets';
 export * from './users';
 export * from './auth';
 export * from './consent';
+export * from './accounts';
+export * from './targets';
+export * from './scheduled_transactions';

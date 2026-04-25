@@ -27,6 +27,7 @@ app.use(cors({
     const allowedOrigins = [
       process.env.FRONTEND_URL || 'http://localhost:5174',
       'http://localhost:5173',
+      'http://localhost:4016',
       'http://localhost:3000',
       'https://finance-web.endabelyu.com',
       'https://finance-api.endabelyu.com',
@@ -275,8 +276,15 @@ app.get('/openapi.json', (c) => {
 app.get('/docs', swaggerUI({ url: '/openapi.json' }));
 
 // Error handler
+import { HTTPException } from 'hono/http-exception';
+
 app.onError((err, c) => {
   appLogger.error('Server Error', { error: err.message, stack: err.stack });
+  
+  if (err instanceof HTTPException) {
+    return c.json({ error: err.message }, err.status);
+  }
+  
   return c.json({ error: 'Internal Server Error', message: err.message }, 500);
 });
 

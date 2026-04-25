@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "better-auth.session_token",
-      "value": "LY28JvOpBloH8bTNp3HwjEJgxlKDPi5n.YNa6yXVOFxj%2BvDh2kWaTyNAatC6IdnMYinakzgeSFQE%3D",
+      "value": "enOYipSHqJbmgqpzbIkCtBcz4nXpzoDG.DIoRTKZ%2B%2FoVLwrjKOXa1cdbmyriJBHwwZnAH6uhaUP0%3D",
       "domain": "localhost",
       "path": "/",
-      "expires": 1773394270.604937,
+      "expires": 1777732593.131798,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
@@ -13,11 +13,11 @@
   ],
   "origins": [
     {
-      "origin": "http://localhost:5173",
+      "origin": "http://localhost:4016",
       "localStorage": [
         {
           "name": "finance-tracker-walkthrough",
-          "value": "{\"isCompleted\":true,\"isSkipped\":true,\"lastVisit\":\"2026-03-06T09:31:10.985Z\"}"
+          "value": "{\"isCompleted\":true,\"isSkipped\":true,\"lastVisit\":\"2026-04-25T14:36:33.281Z\"}"
         }
       ]
     }

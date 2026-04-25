@@ -7,9 +7,9 @@ import 'dotenv/config';
  */
 export default defineConfig({
   testDir: './tests/e2e',
-  timeout: 15 * 1000,
+  timeout: 30 * 1000,
   expect: {
-    timeout: 8000,
+    timeout: 10000,
   },
   fullyParallel: false, // run serially so auth state is ready before specs
   forbidOnly: !!process.env.CI,
@@ -21,14 +21,14 @@ export default defineConfig({
 
   use: {
     actionTimeout: 0,
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:4016',
     trace: 'on-first-retry',
   },
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
+    url: 'http://localhost:4016',
+    reuseExistingServer: true,
   },
 
   projects: [

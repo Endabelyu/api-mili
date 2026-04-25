@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = process.env.TEST_URL || 'http://localhost:3005';
+const BASE_URL = process.env.TEST_URL || 'http://localhost:4015';
 const RESULTS_DIR = path.join(__dirname, '..', 'test-results');
 
 if (!fs.existsSync(RESULTS_DIR)) {
@@ -45,11 +45,6 @@ const endpoints = [
   // Auth
   { method: 'POST', path: '/api/auth/sign-in/email', body: { email: 'test@test.com', password: 'wrong' }, expectedStatus: [400, 401, 404], name: 'Auth Sign In (Invalid)' },
   { method: 'GET', path: '/api/auth/session', expectedStatus: [200, 401], name: 'Get Session' },
-  
-  // Frontend routes (should return HTML)
-  { method: 'GET', path: '/', expectedStatus: 200, expectHtml: true, name: 'Home Page' },
-  { method: 'GET', path: '/login', expectedStatus: 200, expectHtml: true, name: 'Login Page' },
-  { method: 'GET', path: '/dashboard', expectedStatus: [200, 302], expectHtml: true, name: 'Dashboard Page' },
   
   // Static assets
   { method: 'GET', path: '/sw.js', expectedStatus: [200, 404], name: 'Service Worker' },

@@ -6,7 +6,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "cross-env PORT=3005 tsx watch server/index.ts",
+    "dev": "cross-env PORT=4015 tsx watch server/index.ts",
     "build": "npm run build:server",
     "build:server": "esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outdir=build/custom-server",
     "start": "node ./build/custom-server/index.js",
@@ -20,11 +20,13 @@
     "test:unit": "vitest run --exclude '**/*.integration.test.ts'",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "npx playwright test",
+    "test:flow": "npx playwright test tests/e2e/main-flow.spec.ts",
     "test:perf": "node scripts/performance-test.cjs",
     "test:security": "node scripts/security-scan.cjs",
     "test:memory": "node scripts/memory-leak-test.cjs",
     "test:api": "node scripts/api-test.cjs",
-    "test:all": "node scripts/test-all.cjs"
+    "test:all": "node scripts/test-all.cjs && npx playwright test"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",

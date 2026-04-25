@@ -8,8 +8,9 @@ import { MiddlewareHandler } from 'hono';
 // FRONTEND_URL must be set in production (e.g. https://finance-web.endabelyu.com).
 const LOCAL_DEV_ORIGINS = [
   'http://localhost:5173',
+  'http://localhost:4016',
   'http://localhost:5174',
-  'http://localhost:3005',
+  'http://localhost:4015',
 ];
 
 const trustedOrigins = process.env.FRONTEND_URL
@@ -28,10 +29,16 @@ export const auth = betterAuth({
   }),
   baseURL: process.env.NODE_ENV === 'production'
     ? process.env.BETTER_AUTH_URL
-    : 'http://localhost:3005/api/auth',
+    : 'http://localhost:4015/api/auth',
   secret: process.env.BETTER_AUTH_SECRET,
   emailAndPassword: {
     enabled: true,
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    },
   },
   trustedOrigins,
 });
