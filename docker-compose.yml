@@ -62,6 +62,16 @@ services:
     networks:
       - finance-tracker-network
 
+  # Redis for Rate Limiting & Caching
+  redis:
+    image: redis:7-alpine
+    container_name: finance-tracker-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - finance-tracker-network
+
 volumes:
   postgres_data:
 
