@@ -79,6 +79,9 @@ app.get('/metrics', (c) => {
 });
 
 // API routes
+// /api/v1 is the canonical versioned path (standards §19 — required from day one)
+// /api is kept for backward compatibility during the transition window
+app.route('/api/v1', apiRoutes);
 app.route('/api', apiRoutes);
 
 // Root — API info

@@ -1,22 +1,20 @@
 import { Hono } from 'hono';
-import transactions from './transactions';
-import budgets from './budgets';
-import categories from './categories';
-import reports from './reports';
-import auth from './auth';
-import exportRoutes from './export';
+import authApp from './auth';
+import transactionsApp from './transactions';
+import budgetsApp from './budgets';
+import categoriesApp from './categories';
+import reportsApp from './reports';
+import exportApp from './export';
+import consentApp from './consent';
 
-const app = new Hono();
+const apiRouter = new Hono()
+  .route('/auth', authApp)
+  .route('/transactions', transactionsApp)
+  .route('/budgets', budgetsApp)
+  .route('/categories', categoriesApp)
+  .route('/reports', reportsApp)
+  .route('/export', exportApp)
+  .route('/consent', consentApp);
 
-// Mount auth routes at /api/auth
-app.route('/auth', auth);
-
-// Mount API routes
-app.route('/transactions', transactions);
-app.route('/budgets', budgets);
-app.route('/categories', categories);
-app.route('/reports', reports);
-app.route('/export', exportRoutes);
-
-export default app;
-export type AppRoutes = typeof app;
+export default apiRouter;
+export type AppRoutes = typeof apiRouter;
