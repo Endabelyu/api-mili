@@ -19,6 +19,7 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - TELEGRAM_TOPIC_FRONTEND=${TELEGRAM_TOPIC_FRONTEND}
       - TELEGRAM_TOPIC_BACKEND=${TELEGRAM_TOPIC_BACKEND}
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - db
     restart: unless-stopped
