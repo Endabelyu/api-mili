@@ -14,11 +14,11 @@ COPY . .
 RUN npm run build
 
 # Expose the port
-EXPOSE 4006
+EXPOSE 4015
 
 # Set environment
 ENV NODE_ENV=production
-ENV PORT=4006
+ENV PORT=4015
 
 # Start the Hono custom server
 CMD ["node", "--max-old-space-size=256", "./build/custom-server/index.js"]
