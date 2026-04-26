@@ -269,7 +269,7 @@ app.get('/', (c) => {
         </div>
         
         <div class="footer">
-            Server is running securely on port 4006
+            Server is running securely on port ${process.env.PORT || '3005'}
         </div>
     </div>
 </body>
