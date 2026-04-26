@@ -7,8 +7,9 @@ import { getConnInfo } from 'hono/bun';
  * Uses `ioredis` + `hono-rate-limiter` for distributed limiting.
  */
 
-const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-export const redis = process.env.NODE_ENV === 'production' ? new Redis(redisUrl) : null as any;
+// const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+// export const redis = process.env.NODE_ENV === 'production' ? new Redis(redisUrl) : null as any;
+export const redis = null as any; // Temporarily disabled Redis
 
 // Create a custom store for hono-rate-limiter using ioredis
 class RedisStore {
@@ -64,7 +65,7 @@ export function createRateLimiter(limit: number, windowMs: number) {
              c.req.header('x-real-ip') || 
              'unknown-ip';
     },
-    ...(isProd ? { store: new RedisStore(redis, windowMs) } : {}),
+    // ...(isProd ? { store: new RedisStore(redis, windowMs) } : {}),
     message: { error: 'Too many requests, please slow down.' },
     statusCode: 429,
   });
