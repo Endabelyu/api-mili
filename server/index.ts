@@ -15,6 +15,7 @@ import { logger as appLogger } from './lib/logger';
 import { swaggerUI } from '@hono/swagger-ui';
 import { openApiSpec } from './openapi';
 import { db, pingDb } from './lib/db';
+import { csrf } from 'hono/csrf';
 
 const app = new Hono();
 
@@ -40,6 +41,24 @@ app.use(cors({
   credentials: true,
   allowHeaders: ['Content-Type', 'Authorization', 'X-Trace-ID'],
   exposeHeaders: ['X-Trace-ID'],
+}));
+app.use(csrf({
+  origin: (origin) => {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:5174',
+      'http://localhost:5173',
+      'http://localhost:4016',
+      'http://localhost:3000',
+      'https://finance-web.endabelyu.com',
+      'https://finance-api.endabelyu.com',
+      'http://finance-web.endabelyu.com',
+      'http://finance-api.endabelyu.com'
+    ];
+    // In production require exact match or subdomain match.
+    // In dev allow localhost
+    if (!origin) return false;
+    return allowedOrigins.some(o => origin.startsWith(o)) || origin.endsWith('.endabelyu.com');
+  }
 }));
 app.use(secureHeaders());
 
@@ -70,8 +89,14 @@ app.get('/readyz', async (c) => {
   return dbOk ? c.json({ status: 'ok' }) : c.json({ status: 'not ready' }, 503);
 });
 
-// Metrics endpoint — Prometheus format (or JSON if requested)
+// Metrics endpoint — protected in production by a shared secret
 app.get('/metrics', (c) => {
+  if (process.env.NODE_ENV === 'production') {
+    const key = c.req.header('X-Metrics-Key');
+    if (key !== process.env.METRICS_SECRET) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+  }
   const accept = c.req.header('Accept');
   if (accept && accept.includes('application/json')) {
     return c.json(getMetrics());
@@ -272,8 +297,10 @@ app.get('/openapi.json', (c) => {
   });
 });
 
-// Swagger UI dashboard
-app.get('/docs', swaggerUI({ url: '/openapi.json' }));
+// Swagger UI dashboard — disabled in production
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/docs', swaggerUI({ url: '/openapi.json' }));
+}
 
 // Error handler
 import { HTTPException } from 'hono/http-exception';

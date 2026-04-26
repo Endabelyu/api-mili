@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, decimal, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, decimal, boolean, timestamp, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users';
 import { transactions } from './transactions';
@@ -15,7 +15,9 @@ export const accounts = pgTable('accounts', {
   isDefault: boolean('is_default').default(false),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow(),
-});
+}, (table) => [
+  index('idx_accounts_user').on(table.userId),
+]);
 
 export const accountsRelations = relations(accounts, ({ one, many }) => ({
   user: one(users, { fields: [accounts.userId], references: [users.id] }),

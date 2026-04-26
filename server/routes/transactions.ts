@@ -29,6 +29,7 @@ const createSchema = z.object({
     return num.toFixed(2);
   }),
   categoryId: z.string(),
+  accountId: z.string().optional(),
   description: z.string().optional(),
   date: z.string().date(),
 });
@@ -42,6 +43,7 @@ const updateSchema = z.object({
     return num.toFixed(2);
   }),
   categoryId: z.string().optional(),
+  accountId: z.string().optional(),
   description: z.string().optional(),
   date: z.string().date().optional(),
 });
@@ -83,8 +85,10 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
   }
 
   if (query.search) {
+    // Escape SQL LIKE wildcards to prevent injection
+    const escaped = query.search.replace(/[%_\\]/g, '\\$&');
     conditions.push(
-      like(transactions.description, `%${query.search}%`)
+      like(transactions.description, `%${escaped}%`)
     );
   }
 
@@ -139,6 +143,7 @@ app.post('/', zValidator('json', createSchema), async (c) => {
       type: data.type,
       amount: data.amount,
       categoryId: data.categoryId,
+      accountId: data.accountId,
       description: data.description,
       date: new Date(data.date),
       userId: user.id,
@@ -186,6 +191,7 @@ app.put('/:id', zValidator('json', updateSchema), async (c) => {
   if (data.type) updateData.type = data.type;
   if (data.amount) updateData.amount = data.amount;
   if (data.categoryId) updateData.categoryId = data.categoryId;
+  if (data.accountId !== undefined) updateData.accountId = data.accountId;
   if (data.description !== undefined) updateData.description = data.description;
   if (data.date) updateData.date = new Date(data.date);
 

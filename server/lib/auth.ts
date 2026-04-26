@@ -41,6 +41,13 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins,
+  advanced: {
+    cookiePrefix: 'saku',
+    useSecureCookies: process.env.NODE_ENV === 'production',
+    crossSubDomainCookies: {
+      enabled: false,
+    },
+  },
 });
 
 export const requireAuth: MiddlewareHandler = async (c, next) => {

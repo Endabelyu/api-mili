@@ -34,8 +34,8 @@ app.get('/summary', zValidator('query', monthQuerySchema), async (c) => {
   if (month) {
     const startDate = `${month}-01`;
     const [year, monthNum] = month.split('-');
-    const nextMonth = String(Number(monthNum) + 1).padStart(2, '0');
-    const endDate = `${year}-${nextMonth}-01`;
+    const nextMonthDate = new Date(Number(year), Number(monthNum), 1);
+    const endDate = nextMonthDate.toISOString().slice(0, 10);
     dateCondition = sql`${transactions.date} >= ${startDate} AND ${transactions.date} < ${endDate}`;
   }
 
@@ -97,8 +97,8 @@ app.get('/by-category', zValidator('query', monthQuerySchema), async (c) => {
   if (month) {
     const startDate = `${month}-01`;
     const [year, monthNum] = month.split('-');
-    const nextMonth = String(Number(monthNum) + 1).padStart(2, '0');
-    const endDate = `${year}-${nextMonth}-01`;
+    const nextMonthDate = new Date(Number(year), Number(monthNum), 1);
+    const endDate = nextMonthDate.toISOString().slice(0, 10);
     dateCondition = sql`${transactions.date} >= ${startDate} AND ${transactions.date} < ${endDate}`;
   }
 
