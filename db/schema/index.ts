@@ -7,3 +7,4 @@ export * from './consent';
 export * from './accounts';
 export * from './targets';
 export * from './scheduled_transactions';
+export * from './rate-limits';

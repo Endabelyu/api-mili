@@ -19,7 +19,6 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - TELEGRAM_TOPIC_FRONTEND=${TELEGRAM_TOPIC_FRONTEND}
       - TELEGRAM_TOPIC_BACKEND=${TELEGRAM_TOPIC_BACKEND}
-      # - REDIS_URL=redis://redis:6379
     depends_on:
       - db
     restart: unless-stopped
@@ -62,16 +61,6 @@ services:
     restart: unless-stopped
     networks:
       - finance-tracker-network
-
-  # Redis for Rate Limiting & Caching (Temporarily disabled)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: finance-tracker-redis
-  #   ports:
-  #     - "6379:6379"
-  #   restart: unless-stopped
-  #   networks:
-  #     - finance-tracker-network
 
 volumes:
   postgres_data:

@@ -1,53 +1,58 @@
 import { rateLimiter } from 'hono-rate-limiter';
-import Redis from 'ioredis';
-import { getConnInfo } from 'hono/bun';
+import { db } from './db';
+import { rateLimits } from '@db/schema/rate-limits';
+import { sql, eq } from 'drizzle-orm';
 
 /**
- * Redis-backed rate limiter for Hono.
- * Uses `ioredis` + `hono-rate-limiter` for distributed limiting.
+ * PostgreSQL-backed rate limiter for Hono.
+ * Uses `drizzle-orm` + `hono-rate-limiter` for distributed limiting.
  */
 
-// const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-// export const redis = process.env.NODE_ENV === 'production' ? new Redis(redisUrl) : null as any;
-export const redis = null as any; // Temporarily disabled Redis
-
-// Create a custom store for hono-rate-limiter using ioredis
-class RedisStore {
-  client: Redis;
+// Create a custom store for hono-rate-limiter using Postgres
+class PostgresStore {
   windowMs: number;
 
-  constructor(client: Redis, windowMs: number) {
-    this.client = client;
+  constructor(windowMs: number) {
     this.windowMs = windowMs;
   }
 
   async increment(key: string): Promise<{ totalHits: number; resetTime: Date }> {
-    const multi = this.client.multi();
-    multi.incr(key);
-    multi.pttl(key);
-    const results = await multi.exec();
-    
-    if (!results) throw new Error('Redis transaction failed');
-    
-    const totalHits = results[0][1] as number;
-    let ttl = results[1][1] as number;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + this.windowMs);
 
-    // If no TTL is set (-1), set it to the window size
-    if (ttl === -1) {
-      await this.client.pexpire(key, this.windowMs);
-      ttl = this.windowMs;
-    }
-
-    const resetTime = new Date(Date.now() + ttl);
-    return { totalHits, resetTime };
+    const result = await db.execute(sql`
+      INSERT INTO rate_limits (key, total_hits, expires_at)
+      VALUES (${key}, 1, ${expiresAt})
+      ON CONFLICT (key) DO UPDATE SET
+        total_hits = CASE 
+          WHEN rate_limits.expires_at < ${now} THEN 1
+          ELSE rate_limits.total_hits + 1
+        END,
+        expires_at = CASE
+          WHEN rate_limits.expires_at < ${now} THEN ${expiresAt}
+          ELSE rate_limits.expires_at
+        END
+      RETURNING total_hits, expires_at
+    `);
+    
+    // In postgres.js driver, execute returns the rows directly as an array
+    const row = result[0] as any;
+    
+    return { 
+      totalHits: Number(row.total_hits), 
+      resetTime: new Date(row.expires_at) 
+    };
   }
 
   async decrement(key: string): Promise<void> {
-    await this.client.decr(key);
+    await db.execute(sql`
+      UPDATE rate_limits SET total_hits = total_hits - 1
+      WHERE key = ${key} AND total_hits > 0
+    `);
   }
 
   async resetKey(key: string): Promise<void> {
-    await this.client.del(key);
+    await db.delete(rateLimits).where(eq(rateLimits.key, key));
   }
 }
 
@@ -65,7 +70,7 @@ export function createRateLimiter(limit: number, windowMs: number) {
              c.req.header('x-real-ip') || 
              'unknown-ip';
     },
-    // ...(isProd ? { store: new RedisStore(redis, windowMs) } : {}),
+    ...(isProd ? { store: new PostgresStore(windowMs) } : {}),
     message: { error: 'Too many requests, please slow down.' },
     statusCode: 429,
   });

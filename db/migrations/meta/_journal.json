@@ -43,6 +43,13 @@
       "when": 1777182836214,
       "tag": "0005_first_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777243715732,
+      "tag": "0006_strange_malice",
+      "breakpoints": true
     }
   ]
 }
