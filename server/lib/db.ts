@@ -74,8 +74,8 @@ export async function pingDb(): Promise<boolean> {
   } catch (err) {
     logger.error('Database Ping Failed', { 
       error: err instanceof Error ? err.message : String(err),
-      code: (err as any).code,
-      hostname: (err as any).hostname
+      code: (err as { code?: string }).code,
+      hostname: (err as { hostname?: string }).hostname
     });
     return false;
   }

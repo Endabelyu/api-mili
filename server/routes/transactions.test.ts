@@ -6,6 +6,17 @@ import transactionsRoute from './transactions';
 import * as dbModule from '@server/lib/db';
 import type { MiddlewareHandler } from 'hono';
 
+type MockDb = {
+  query: {
+    transactions: { findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> };
+    categories: { findFirst: ReturnType<typeof vi.fn> };
+  };
+  select: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
+};
+
 // Mock the database
 vi.mock('@server/lib/db', () => ({
   db: {
@@ -68,7 +79,7 @@ describe('Transactions API', () => {
 
   describe('GET /api/transactions', () => {
     it('should list transactions for authenticated user', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findMany.mockResolvedValue([mockTransaction]);
       db.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -88,7 +99,7 @@ describe('Transactions API', () => {
     });
 
     it('should filter transactions by type', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findMany.mockResolvedValue([]);
       db.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -104,7 +115,7 @@ describe('Transactions API', () => {
     });
 
     it('should filter transactions by month', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findMany.mockResolvedValue([]);
       db.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -120,7 +131,7 @@ describe('Transactions API', () => {
     });
 
     it('should filter transactions by search term', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findMany.mockResolvedValue([]);
       db.select.mockReturnValue({
         from: vi.fn().mockReturnValue({
@@ -138,7 +149,7 @@ describe('Transactions API', () => {
 
   describe('POST /api/transactions', () => {
     it('should create a new transaction', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.categories.findFirst.mockResolvedValue(mockCategory);
       db.insert.mockReturnValue({
         values: vi.fn().mockReturnValue({
@@ -164,7 +175,7 @@ describe('Transactions API', () => {
     });
 
     it('should return 400 for invalid category', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.categories.findFirst.mockResolvedValue(null);
 
       // @ts-expect-error - testClient type inference
@@ -191,7 +202,7 @@ describe('Transactions API', () => {
         json: {
           type: 'invalid',
           amount: 'not-a-number',
-        } as any,
+        } as unknown as Record<string, unknown>,
       });
 
       expect(res.status).toBe(400);
@@ -200,7 +211,7 @@ describe('Transactions API', () => {
 
   describe('PUT /api/transactions/:id', () => {
     it('should update own transaction', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findFirst.mockResolvedValue(mockTransaction);
       db.query.categories.findFirst.mockResolvedValue(mockCategory);
       db.update.mockReturnValue({
@@ -222,7 +233,7 @@ describe('Transactions API', () => {
     });
 
     it('should return 404 for non-existent transaction', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findFirst.mockResolvedValue(null);
 
       // @ts-expect-error - testClient type inference
@@ -238,7 +249,7 @@ describe('Transactions API', () => {
     });
 
     it('should return 403 for updating other user transaction', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findFirst.mockResolvedValue({
         ...mockTransaction,
         userId: 'other-user',
@@ -259,7 +270,7 @@ describe('Transactions API', () => {
 
   describe('DELETE /api/transactions/:id', () => {
     it('should delete own transaction', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findFirst.mockResolvedValue(mockTransaction);
       db.delete.mockReturnValue({
         where: vi.fn().mockResolvedValue(undefined),
@@ -277,7 +288,7 @@ describe('Transactions API', () => {
     });
 
     it('should return 404 for non-existent transaction', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findFirst.mockResolvedValue(null);
 
       // @ts-expect-error - testClient type inference
@@ -292,7 +303,7 @@ describe('Transactions API', () => {
     });
 
     it('should return 403 for deleting other user transaction', async () => {
-      const db = dbModule.db as any;
+      const db = dbModule.db as unknown as MockDb;
       db.query.transactions.findFirst.mockResolvedValue({
         ...mockTransaction,
         userId: 'other-user',

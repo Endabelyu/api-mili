@@ -69,10 +69,14 @@ app.put('/:id', zValidator('json', updateTargetSchema), async (c) => {
 
   if (!existing) throw new HTTPException(404, { message: 'Target not found' });
 
-  const updateData: any = { ...data, updatedAt: new Date() };
-  if (data.deadline !== undefined) {
-    updateData.deadline = data.deadline ? new Date(data.deadline) : null;
-  }
+  const { deadline, ...restData } = data;
+  const updateData = { 
+    ...restData, 
+    updatedAt: new Date(),
+    ...(deadline !== undefined && {
+      deadline: deadline ? new Date(deadline) : null
+    })
+  };
 
   const [updatedTarget] = await db.update(targets)
     .set(updateData)

@@ -74,10 +74,14 @@ app.put('/:id', zValidator('json', updateScheduledSchema), async (c) => {
 
   if (!existing) throw new HTTPException(404, { message: 'Scheduled transaction not found' });
 
-  const updateData: any = { ...data, updatedAt: new Date() };
-  if (data.nextRunDate !== undefined) {
-    updateData.nextRunDate = new Date(data.nextRunDate);
-  }
+  const { nextRunDate, ...restData } = data;
+  const updateData = { 
+    ...restData, 
+    updatedAt: new Date(),
+    ...(nextRunDate !== undefined && {
+      nextRunDate: new Date(nextRunDate)
+    })
+  };
 
   const [updatedScheduled] = await db.update(scheduledTransactions)
     .set(updateData)

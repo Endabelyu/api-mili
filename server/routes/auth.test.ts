@@ -10,7 +10,7 @@ const mockAuthHandler = vi.fn();
 
 vi.mock('@server/lib/auth', () => ({
   auth: {
-    handler: (...args: any[]) => mockAuthHandler(...args),
+    handler: (...args: unknown[]) => mockAuthHandler(...args),
   },
 }));
 

@@ -5,13 +5,13 @@ import { sendTelegramAlert } from './telegram';
  * Replaces standard console.log with JSON payloads that logging agents can parse.
  */
 export const logger = {
-  info: (msg: string, ctx?: Record<string, any>) => {
+  info: (msg: string, ctx?: Record<string, unknown>) => {
     console.info(JSON.stringify({ level: 'info', timestamp: new Date().toISOString(), msg, ...ctx }));
   },
-  warn: (msg: string, ctx?: Record<string, any>) => {
+  warn: (msg: string, ctx?: Record<string, unknown>) => {
     console.warn(JSON.stringify({ level: 'warn', timestamp: new Date().toISOString(), msg, ...ctx }));
   },
-  error: (msg: string, ctx?: Record<string, any>) => {
+  error: (msg: string, ctx?: Record<string, unknown>) => {
     const errorBody = JSON.stringify({ level: 'error', timestamp: new Date().toISOString(), msg, ...ctx });
     console.error(errorBody);
     
@@ -28,7 +28,7 @@ export const logger = {
       topicId
     ).catch(fetchErr => console.warn('Silencing expected telegram failure to prevent log loop', fetchErr));
   },
-  debug: (msg: string, ctx?: Record<string, any>) => {
+  debug: (msg: string, ctx?: Record<string, unknown>) => {
     if (process.env.NODE_ENV !== 'production') {
       console.debug(JSON.stringify({ level: 'debug', timestamp: new Date().toISOString(), msg, ...ctx }));
     }

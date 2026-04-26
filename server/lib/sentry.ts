@@ -70,7 +70,7 @@ export async function sentryMiddleware(
 ) {
   try {
     await next();
-    const status = (c.res as any)?.status ?? 200;
+    const status = (c.res as { status?: number })?.status ?? 200;
     if (status >= 500) {
       Sentry.addBreadcrumb({
         message: `${c.req.method} ${c.req.path} → ${status}`,

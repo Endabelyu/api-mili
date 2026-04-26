@@ -36,7 +36,7 @@ class PostgresStore {
     `);
     
     // In postgres.js driver, execute returns the rows directly as an array
-    const row = result[0] as any;
+    const row = result[0] as { total_hits: string | number; expires_at: string | Date };
     
     return { 
       totalHits: Number(row.total_hits), 

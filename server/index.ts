@@ -21,8 +21,8 @@ const app = new Hono();
 
 // Middleware
 app.use(honoLogger());
-app.use('*', monitoringMiddleware as any);
-app.use('*', sentryMiddleware as any);
+app.use('*', monitoringMiddleware as unknown as import('hono').MiddlewareHandler);
+app.use('*', sentryMiddleware as unknown as import('hono').MiddlewareHandler);
 app.use(cors({
   origin: (origin) => {
     const allowedOrigins = [
