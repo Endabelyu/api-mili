@@ -1,11 +1,11 @@
 {
   "cookies": [
     {
-      "name": "better-auth.session_token",
-      "value": "enOYipSHqJbmgqpzbIkCtBcz4nXpzoDG.DIoRTKZ%2B%2FoVLwrjKOXa1cdbmyriJBHwwZnAH6uhaUP0%3D",
+      "name": "saku.session_token",
+      "value": "K8KwaJBKH7jQPXudpqhQyFk1DFlFzZqY.MItrC%2BhJOkYDVEhThyoUcggN9ffAqJxgJJnseD%2FcL5E%3D",
       "domain": "localhost",
       "path": "/",
-      "expires": 1777732593.131798,
+      "expires": 1777862016.213321,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
@@ -17,7 +17,7 @@
       "localStorage": [
         {
           "name": "finance-tracker-walkthrough",
-          "value": "{\"isCompleted\":true,\"isSkipped\":true,\"lastVisit\":\"2026-04-25T14:36:33.281Z\"}"
+          "value": "{\"isCompleted\":true,\"isSkipped\":true,\"lastVisit\":\"2026-04-27T02:33:36.730Z\"}"
         }
       ]
     }
