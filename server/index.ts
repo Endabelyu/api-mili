@@ -25,8 +25,9 @@ app.use('*', monitoringMiddleware as unknown as import('hono').MiddlewareHandler
 app.use('*', sentryMiddleware as unknown as import('hono').MiddlewareHandler);
 app.use(cors({
   origin: (origin) => {
+    const envOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean) : ['http://localhost:5174'];
     const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:5174',
+      ...envOrigins,
       'http://localhost:5173',
       'http://localhost:4016',
       'http://localhost:3000',
@@ -44,8 +45,9 @@ app.use(cors({
 }));
 app.use(csrf({
   origin: (origin) => {
+    const envOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean) : ['http://localhost:5174'];
     const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:5174',
+      ...envOrigins,
       'http://localhost:5173',
       'http://localhost:4016',
       'http://localhost:3000',

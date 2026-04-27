@@ -13,9 +13,11 @@ const LOCAL_DEV_ORIGINS = [
   'http://localhost:4015',
 ];
 
-const trustedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, ...LOCAL_DEV_ORIGINS]
-  : LOCAL_DEV_ORIGINS;
+const envOrigins = process.env.FRONTEND_URL 
+  ? process.env.FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean)
+  : [];
+
+const trustedOrigins = [...envOrigins, ...LOCAL_DEV_ORIGINS];
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
