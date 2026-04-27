@@ -20,27 +20,36 @@ class PostgresStore {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + this.windowMs);
 
-    const result = await db.execute(sql`
-      INSERT INTO rate_limits (key, total_hits, expires_at)
-      VALUES (${key}, 1, ${expiresAt})
-      ON CONFLICT (key) DO UPDATE SET
-        total_hits = CASE 
-          WHEN rate_limits.expires_at < ${now} THEN 1
-          ELSE rate_limits.total_hits + 1
-        END,
-        expires_at = CASE
-          WHEN rate_limits.expires_at < ${now} THEN ${expiresAt}
-          ELSE rate_limits.expires_at
-        END
-      RETURNING total_hits, expires_at
-    `);
-    
-    // In postgres.js driver, execute returns the rows directly as an array
-    const row = result[0] as { total_hits: string | number; expires_at: string | Date };
+    const result = await db
+      .insert(rateLimits)
+      .values({
+        key,
+        totalHits: 1,
+        expiresAt,
+      })
+      .onConflictDoUpdate({
+        target: rateLimits.key,
+        set: {
+          totalHits: sql`CASE 
+            WHEN ${rateLimits.expiresAt} < ${now} THEN 1 
+            ELSE ${rateLimits.totalHits} + 1 
+          END`,
+          expiresAt: sql`CASE 
+            WHEN ${rateLimits.expiresAt} < ${now} THEN ${expiresAt} 
+            ELSE ${rateLimits.expiresAt} 
+          END`,
+        },
+      })
+      .returning({
+        totalHits: rateLimits.totalHits,
+        expiresAt: rateLimits.expiresAt,
+      });
+
+    const row = result[0];
     
     return { 
-      totalHits: Number(row.total_hits), 
-      resetTime: new Date(row.expires_at) 
+      totalHits: Number(row.totalHits), 
+      resetTime: new Date(row.expiresAt) 
     };
   }
 

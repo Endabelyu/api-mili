@@ -323,7 +323,11 @@ app.onError((err, c) => {
     return c.json({ error: err.message }, err.status);
   }
   
-  return c.json({ error: 'Internal Server Error', message: err.message }, 500);
+  // Hide technical details from frontend in production
+  const isProd = process.env.NODE_ENV === 'production';
+  const message = isProd ? 'Internal Server Error' : err.message;
+  
+  return c.json({ error: 'Internal Server Error', message }, 500);
 });
 
 // Not found handler
