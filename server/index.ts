@@ -43,25 +43,34 @@ app.use(cors({
   allowHeaders: ['Content-Type', 'Authorization', 'X-Trace-ID'],
   exposeHeaders: ['X-Trace-ID'],
 }));
-app.use(csrf({
-  origin: (origin) => {
-    const envOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean) : ['http://localhost:5174'];
-    const allowedOrigins = [
-      ...envOrigins,
-      'http://localhost:5173',
-      'http://localhost:4016',
-      'http://localhost:3000',
-      'https://finance-web.endabelyu.com',
-      'https://finance-api.endabelyu.com',
-      'http://finance-web.endabelyu.com',
-      'http://finance-api.endabelyu.com'
-    ];
-    // In production require exact match or subdomain match.
-    // In dev allow localhost
-    if (!origin) return false;
-    return allowedOrigins.some(o => origin.startsWith(o)) || origin.endsWith('.endabelyu.com');
+app.use(async (c, next) => {
+  // Skip CSRF for Better Auth since it has its own built-in CSRF protection
+  if (c.req.path.startsWith('/api/auth')) {
+    return next();
   }
-}));
+  
+  const csrfMiddleware = csrf({
+    origin: (origin) => {
+      const envOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean) : ['http://localhost:5174'];
+      const allowedOrigins = [
+        ...envOrigins,
+        'http://localhost:5173',
+        'http://localhost:4016',
+        'http://localhost:3000',
+        'https://finance-web.endabelyu.com',
+        'https://finance-api.endabelyu.com',
+        'http://finance-web.endabelyu.com',
+        'http://finance-api.endabelyu.com'
+      ];
+      // In production require exact match or subdomain match.
+      // In dev allow localhost
+      if (!origin) return false;
+      return allowedOrigins.some(o => origin.startsWith(o)) || origin.endsWith('.endabelyu.com');
+    }
+  });
+  
+  return csrfMiddleware(c, next);
+});
 app.use(secureHeaders());
 
 // Error handlers
