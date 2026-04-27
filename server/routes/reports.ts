@@ -141,7 +141,7 @@ app.get('/by-category', zValidator('query', monthQuerySchema), async (c) => {
       : 0,
   }));
 
-  return c.json(result);
+  return c.json({ items: result });
 });
 
 // GET /api/reports/monthly?months=6 - Monthly trend
@@ -194,7 +194,7 @@ app.get('/monthly', zValidator('query', monthsQuerySchema), async (c) => {
     };
   });
 
-  return c.json(result);
+  return c.json({ items: result });
 });
 
 export default app;
