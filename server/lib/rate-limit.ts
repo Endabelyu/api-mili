@@ -31,11 +31,11 @@ class PostgresStore {
         target: rateLimits.key,
         set: {
           totalHits: sql`CASE 
-            WHEN ${rateLimits.expiresAt} < ${now} THEN 1 
+            WHEN ${rateLimits.expiresAt} < ${now.toISOString()}::timestamp THEN 1 
             ELSE ${rateLimits.totalHits} + 1 
           END`,
           expiresAt: sql`CASE 
-            WHEN ${rateLimits.expiresAt} < ${now} THEN ${expiresAt} 
+            WHEN ${rateLimits.expiresAt} < ${now.toISOString()}::timestamp THEN ${expiresAt.toISOString()}::timestamp 
             ELSE ${rateLimits.expiresAt} 
           END`,
         },
