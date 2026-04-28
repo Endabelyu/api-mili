@@ -1,13 +1,12 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { db } from '../lib/db';
 import { targets } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
 
-const app = new Hono();
+const app = new OpenAPIHono();
+const API_TAGS = ['Targets'];
 
 app.use('*', requireAuth);
 
@@ -23,24 +22,80 @@ const createTargetSchema = z.object({
 
 const updateTargetSchema = createTargetSchema.partial();
 
-// ─── List Targets ───────────────────────────────────────────────────────────
-app.get('/', async (c) => {
-  const user = c.get('user');
-  if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
+app.openapi({
+  method: 'get',
+  path: '/',
+  summary: 'List targets',
+  responses: {
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: z.object({
+            items: z.array(z.object({
+              id: z.string(),
+              userId: z.string(),
+              name: z.string(),
+              targetAmount: z.string(),
+              currentAmount: z.string(),
+              deadline: z.any().nullable(),
+              color: z.string(),
+              icon: z.string(),
+              status: z.string()
+            }))
+          })
+        }
+      }
+    }
+  },
+  tags: API_TAGS
+}, async (c) => {
+  const user = c.get('user') as { id: string };
 
   const result = await db.query.targets.findMany({
     where: eq(targets.userId, user.id),
     orderBy: (targets, { desc }) => [desc(targets.createdAt)],
   });
 
-  return c.json({ items: result });
+  return c.json({ items: result }, 200);
 });
 
-// ─── Create Target ──────────────────────────────────────────────────────────
-app.post('/', zValidator('json', createTargetSchema), async (c) => {
-  const user = c.get('user');
-  if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
-
+app.openapi({
+  method: 'post',
+  path: '/',
+  summary: 'Create target',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: createTargetSchema
+        }
+      }
+    }
+  },
+  responses: {
+    201: {
+      description: 'Created',
+      content: {
+        'application/json': {
+          schema: z.object({
+            id: z.string(),
+            userId: z.string(),
+            name: z.string(),
+            targetAmount: z.string(),
+            currentAmount: z.string(),
+            deadline: z.any().nullable(),
+            color: z.string(),
+            icon: z.string(),
+            status: z.string()
+          })
+        }
+      }
+    }
+  },
+  tags: API_TAGS
+}, async (c) => {
+  const user = c.get('user') as { id: string };
   const data = c.req.valid('json');
   const deadlineDate = data.deadline ? new Date(data.deadline) : null;
 
@@ -55,12 +110,44 @@ app.post('/', zValidator('json', createTargetSchema), async (c) => {
   return c.json(newTarget, 201);
 });
 
-// ─── Update Target ──────────────────────────────────────────────────────────
-app.put('/:id', zValidator('json', updateTargetSchema), async (c) => {
-  const user = c.get('user');
-  const id = c.req.param('id');
-  if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
-
+app.openapi({
+  method: 'put',
+  path: '/{id}',
+  summary: 'Update target',
+  request: {
+    params: z.object({ id: z.string() }),
+    body: {
+      content: {
+        'application/json': {
+          schema: updateTargetSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: z.object({
+            id: z.string(),
+            userId: z.string(),
+            name: z.string(),
+            targetAmount: z.string(),
+            currentAmount: z.string(),
+            deadline: z.any().nullable(),
+            color: z.string(),
+            icon: z.string(),
+            status: z.string()
+          })
+        }
+      }
+    }
+  },
+  tags: API_TAGS
+}, async (c) => {
+  const user = c.get('user') as { id: string };
+  const { id } = c.req.valid('param');
   const data = c.req.valid('json');
 
   const existing = await db.query.targets.findFirst({
@@ -83,14 +170,25 @@ app.put('/:id', zValidator('json', updateTargetSchema), async (c) => {
     .where(eq(targets.id, id))
     .returning();
 
-  return c.json(updatedTarget);
+  return c.json(updatedTarget, 200);
 });
 
-// ─── Delete Target ──────────────────────────────────────────────────────────
-app.delete('/:id', async (c) => {
-  const user = c.get('user');
-  const id = c.req.param('id');
-  if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
+app.openapi({
+  method: 'delete',
+  path: '/{id}',
+  summary: 'Delete target',
+  request: {
+    params: z.object({ id: z.string() })
+  },
+  responses: {
+    204: {
+      description: 'No Content'
+    }
+  },
+  tags: API_TAGS
+}, async (c) => {
+  const user = c.get('user') as { id: string };
+  const { id } = c.req.valid('param');
 
   const existing = await db.query.targets.findFirst({
     where: and(eq(targets.id, id), eq(targets.userId, user.id)),
