@@ -90,7 +90,35 @@ export const openApiSpec = {
         "tags": ["Transactions"],
         "summary": "Get all transactions for user",
         "responses": {
-          "200": { "description": "List of transactions" }
+          "200": {
+            "description": "List of transactions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "amount": { "type": "string" },
+                          "type": { "type": "string" },
+                          "categoryId": { "type": "string" },
+                          "description": { "type": "string" },
+                          "date": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized access"
+          }
         }
       },
       "post": {
@@ -106,7 +134,7 @@ export const openApiSpec = {
                   "amount": { "type": "number", "example": 500 },
                   "type": { "type": "string", "enum": ["income", "expense"], "example": "income" },
                   "categoryId": { "type": "string", "example": "uuid" },
-                  "date": { "type": "string", "example": "2024-01-01T10:00:00Z" },
+                  "date": { "type": "string", "example": "2024-01-01" },
                   "description": { "type": "string", "example": "Salary" }
                 },
                 "required": ["amount", "type", "date"]
@@ -115,7 +143,22 @@ export const openApiSpec = {
           }
         },
         "responses": {
-          "201": { "description": "Created" }
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "amount": { "type": "string" },
+                    "type": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation failure" }
         }
       }
     },
@@ -124,7 +167,32 @@ export const openApiSpec = {
         "tags": ["Budgets"],
         "summary": "Get all budgets",
         "responses": {
-          "200": { "description": "List of budgets" }
+          "200": {
+            "description": "List of budgets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "limitAmount": { "type": "string" },
+                          "month": { "type": "string" },
+                          "spent": { "type": "string" },
+                          "remaining": { "type": "string" },
+                          "percentageUsed": { "type": "number" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -133,7 +201,30 @@ export const openApiSpec = {
         "tags": ["Categories"],
         "summary": "Get all categories",
         "responses": {
-          "200": { "description": "List of categories" }
+          "200": {
+            "description": "List of categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "label": { "type": "string" },
+                          "color": { "type": "string" },
+                          "icon": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
