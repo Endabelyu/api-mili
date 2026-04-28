@@ -310,7 +310,7 @@ app.get('/openapi.json', (c) => {
 
 // OpenAPI Scalar UI dashboard — disabled in production
 if (process.env.NODE_ENV !== 'production') {
-  app.get('/docs', apiReference({ spec: { url: '/openapi.json' } }));
+  app.get('/docs', apiReference({ url: '/openapi.json' }));
 }
 
 // Error handler
