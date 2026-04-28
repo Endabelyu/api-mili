@@ -1,53 +1,150 @@
 import { Hono } from 'hono';
 import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
-import * as fs from 'fs';
-import * as path from 'path';
+import { db } from '../lib/db';
+import { notifications, budgets, transactions, targets, scheduledTransactions } from '../../db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 const app = new Hono();
 
 app.use('*', requireAuth);
 
-const persistencePath = path.resolve(process.cwd(), 'notifications_state.json');
-
-function getNotifications() {
-  if (fs.existsSync(persistencePath)) {
-    try {
-      return JSON.parse(fs.readFileSync(persistencePath, 'utf8'));
-    } catch {
-      // fallback
-    }
-  }
-  return [
-    { id: '1', title: 'Tagihan Listrik jatuh tempo 2 hari lagi', amount: 'Rp 380.000', time: '2J LALU', icon: 'Zap', color: 'bg-orange-50', iconColor: 'text-orange-500', unread: true },
-    { id: '2', title: 'Anggaran Kopi hampir habis (92%)', amount: 'Sisa Rp 40.000 dari Rp 500.000', time: '5J LALU', icon: 'Coffee', color: 'bg-indigo-50', iconColor: 'text-indigo-500', unread: true },
-    { id: '3', title: 'Target Dana Darurat mencapai 70%!', amount: 'Tinggal Rp 18 juta lagi', time: 'KEMARIN', icon: 'Target', color: 'bg-emerald-50', iconColor: 'text-emerald-500', unread: true },
-    { id: '4', title: 'Transaksi besar terdeteksi', amount: 'Rp 850.000 • Belanja', time: 'KEMARIN', icon: 'Shopping', color: 'bg-rose-50', iconColor: 'text-rose-500', unread: false },
-    { id: '5', title: 'Gaji April masuk', amount: 'Rp 18.500.000 • Bank Jago', time: '3 HARI LALU', icon: 'Salary', color: 'bg-emerald-50', iconColor: 'text-emerald-500', unread: false },
-  ];
-}
-
-function saveNotifications(data: any) {
-  try {
-    fs.writeFileSync(persistencePath, JSON.stringify(data, null, 2));
-  } catch {
-    // fallback
-  }
-}
-
 app.get('/', async (c) => {
   const user = c.get('user');
   if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
 
-  return c.json({ items: getNotifications() });
+  // 1. DYNAMIC BUDGETS TRIGGER
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const userBudgets = await db.query.budgets.findMany({
+    where: and(eq(budgets.userId, user.id), eq(budgets.month, currentMonth)),
+    with: { category: true },
+  });
+
+  const startDate = `${currentMonth}-01`;
+  const [year, monthNum] = currentMonth.split('-');
+  const nextMonthDate = new Date(Number(year), Number(monthNum), 1);
+  const endDate = nextMonthDate.toISOString().slice(0, 10);
+
+  const spendingByCategory = await db
+    .select({
+      categoryId: transactions.categoryId,
+      total: sql<string>`COALESCE(sum(${transactions.amount}), '0')`,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.userId, user.id),
+        eq(transactions.type, 'expense'),
+        sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`
+      )
+    )
+    .groupBy(transactions.categoryId);
+
+  const spendingMap = new Map(spendingByCategory.map((s) => [s.categoryId, s.total]));
+
+  for (const b of userBudgets) {
+    const spent = parseFloat(spendingMap.get(b.categoryId) ?? '0');
+    const limit = parseFloat(b.limitAmount);
+    const percentage = limit > 0 ? (spent / limit) * 100 : 0;
+
+    if (percentage >= 80) {
+      const title = `Anggaran ${b.category?.label || 'Kategori'} hampir habis (${Math.round(percentage)}%)`;
+      const existing = await db.query.notifications.findFirst({
+        where: and(eq(notifications.userId, user.id), eq(notifications.title, title)),
+      });
+      if (!existing) {
+        await db.insert(notifications).values({
+          userId: user.id,
+          title,
+          amount: `Sisa Rp ${(limit - spent).toLocaleString('id-ID')} dari Rp ${limit.toLocaleString('id-ID')}`,
+          time: 'BARU SAJA',
+          icon: 'Coffee',
+          color: 'bg-indigo-50',
+          iconColor: 'text-indigo-500',
+          unread: true,
+        });
+      }
+    }
+  }
+
+  // 2. DYNAMIC TARGETS TRIGGER
+  const userTargets = await db.query.targets.findMany({
+    where: eq(targets.userId, user.id),
+  });
+
+  for (const t of userTargets) {
+    const targetAmt = parseFloat(t.targetAmount);
+    const currentAmt = parseFloat(t.currentAmount);
+    const targetPct = targetAmt > 0 ? (currentAmt / targetAmt) * 100 : 0;
+
+    if (targetPct >= 100) {
+      const title = `Target ${t.name} Berhasil Dicapai! 🎉`;
+      const existing = await db.query.notifications.findFirst({
+        where: and(eq(notifications.userId, user.id), eq(notifications.title, title)),
+      });
+      if (!existing) {
+        await db.insert(notifications).values({
+          userId: user.id,
+          title,
+          amount: `Lengkap Rp ${targetAmt.toLocaleString('id-ID')}`,
+          time: 'BARU SAJA',
+          icon: 'Target',
+          color: 'bg-emerald-50',
+          iconColor: 'text-emerald-500',
+          unread: true,
+        });
+      }
+    }
+  }
+
+  // 3. DYNAMIC SCHEDULED TRANSACTIONS approaching
+  const userScheduled = await db.query.scheduledTransactions.findMany({
+    where: and(eq(scheduledTransactions.userId, user.id), eq(scheduledTransactions.status, 'active')),
+  });
+
+  const now = new Date();
+  for (const s of userScheduled) {
+    const nextRun = new Date(s.nextRunDate);
+    const diffTime = nextRun.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 3 && diffDays >= 0) {
+      const title = `Transaksi Terjadwal Segera Jatuh Tempo`;
+      const existing = await db.query.notifications.findFirst({
+        where: and(eq(notifications.userId, user.id), eq(notifications.title, title), eq(notifications.amount, s.description || 'Tagihan')),
+      });
+      if (!existing) {
+        await db.insert(notifications).values({
+          userId: user.id,
+          title,
+          amount: s.description || 'Tagihan Pembayaran Terjadwal',
+          time: `${diffDays === 0 ? 'HARI INI' : diffDays + ' HARI LAGI'}`,
+          icon: 'Zap',
+          color: 'bg-orange-50',
+          iconColor: 'text-orange-500',
+          unread: true,
+        });
+      }
+    }
+  }
+
+  // Fetch final list
+  const finalItems = await db.query.notifications.findMany({
+    where: eq(notifications.userId, user.id),
+    orderBy: (notifications, { desc }) => [desc(notifications.createdAt)],
+  });
+
+  return c.json({ items: finalItems });
 });
 
 app.post('/mark-all-read', async (c) => {
   const user = c.get('user');
   if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
 
-  const notifications = getNotifications().map((n: any) => ({ ...n, unread: false }));
-  saveNotifications(notifications);
+  await db.update(notifications)
+    .set({ unread: false })
+    .where(and(eq(notifications.userId, user.id), eq(notifications.unread, true)));
+
   return c.json({ success: true });
 });
 
@@ -56,10 +153,10 @@ app.put('/:id/read', async (c) => {
   if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
 
   const { id } = c.req.param();
-  const notifications = getNotifications().map((n: any) => 
-    n.id === id ? { ...n, unread: false } : n
-  );
-  saveNotifications(notifications);
+  await db.update(notifications)
+    .set({ unread: false })
+    .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
+
   return c.json({ success: true });
 });
 
