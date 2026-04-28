@@ -145,6 +145,41 @@ export const openApiSpec = {
           "200": { "description": "Summary report" }
         }
       }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get dynamic notifications",
+        "responses": {
+          "200": { "description": "List of dynamic alerts" }
+        }
+      }
+    },
+    "/api/notifications/mark-all-read": {
+      "post": {
+        "tags": ["Notifications"],
+        "summary": "Mark all alerts as read",
+        "responses": {
+          "200": { "description": "Success state" }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Mark individual alert as read",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Success state" }
+        }
+      }
     }
   }
 };
