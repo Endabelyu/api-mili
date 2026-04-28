@@ -34,14 +34,43 @@ app.openapi({
     query: listQuerySchema
   },
   responses: {
-    200: { description: 'Success' }
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: z.object({
+            items: z.array(z.object({
+              id: z.string(),
+              amount: z.string(),
+              type: z.string(),
+              categoryId: z.string(),
+              accountId: z.string().nullable(),
+              description: z.string().nullable(),
+              date: z.any(),
+              category: z.object({
+                id: z.string(),
+                label: z.string(),
+                color: z.string(),
+                icon: z.string().nullable()
+              }).nullable()
+            })),
+            pagination: z.object({
+              page: z.number(),
+              limit: z.number(),
+              total: z.number(),
+              totalPages: z.number()
+            })
+          })
+        }
+      }
+    }
   },
   tags: API_TAGS
 }, async (c) => {
   const user = c.get('user') as { id: string };
   const query = c.req.valid('query');
-  const page = query.page;
-  const limit = query.limit;
+  const page = Number(query.page || '1');
+  const limit = Number(query.limit || '20');
   const offset = (page - 1) * limit;
 
   // Build where conditions
@@ -129,8 +158,32 @@ app.openapi({
     }
   },
   responses: {
-    201: { description: 'Created' },
-    400: { description: 'Validation Error' }
+    201: {
+      description: 'Created',
+      content: {
+        'application/json': {
+          schema: z.object({
+            id: z.string(),
+            amount: z.string(),
+            type: z.string(),
+            categoryId: z.string(),
+            accountId: z.string().nullable(),
+            description: z.string().nullable(),
+            date: z.any()
+          })
+        }
+      }
+    },
+    400: {
+      description: 'Validation Error',
+      content: {
+        'application/json': {
+          schema: z.object({
+            error: z.string()
+          })
+        }
+      }
+    }
   },
   tags: API_TAGS
 }, async (c) => {

@@ -1,39 +1,12 @@
-/* eslint-disable @typescript-eslint/triple-slash-reference */
-/// <reference path="../types/hono.d.ts" />
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { eq, and, sql, sum } from 'drizzle-orm';
 import { db } from '@server/lib/db';
 import { budgets, transactions, categories } from '@db/schema';
 import { requireAuth } from '@server/lib/auth-middleware.server';
-
 import { writeLimiter, readLimiter } from '@server/lib/rate-limit';
 
-const app = new Hono();
-
-// List schema for query params
-const listQuerySchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/).optional(), // YYYY-MM format, optionally provided
-});
-
-// Upsert budget schema
-const upsertSchema = z.object({
-  categoryId: z.string(),
-  limitAmount: z.union([z.string(), z.number()]).transform((v) => {
-    const num = typeof v === 'string' ? parseFloat(v) : v;
-    return num.toFixed(2);
-  }),
-  month: z.string().regex(/^\d{4}-\d{2}$/), // YYYY-MM format
-});
-
-// Update budget schema
-const updateSchema = z.object({
-  limitAmount: z.union([z.string(), z.number()]).transform((v) => {
-    const num = typeof v === 'string' ? parseFloat(v) : v;
-    return num.toFixed(2);
-  }),
-});
+const app = new OpenAPIHono();
+const API_TAGS = ['Budgets'];
 
 // Apply auth middleware to all routes
 app.use('*', requireAuth);
@@ -43,8 +16,47 @@ app.use('POST /*', writeLimiter);
 app.use('PUT /*', writeLimiter);
 app.use('DELETE /*', writeLimiter);
 
-// GET /api/budgets?month=YYYY-MM - List budgets for month with spending calculation
-app.get('/', zValidator('query', listQuerySchema), async (c) => {
+const listQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+});
+
+app.openapi({
+  method: 'get',
+  path: '/',
+  summary: 'List budgets for the month',
+  description: 'Calculates active budgets dynamically.',
+  request: {
+    query: listQuerySchema
+  },
+  responses: {
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: z.object({
+            items: z.array(z.object({
+              id: z.string(),
+              categoryId: z.string(),
+              limitAmount: z.string(),
+              month: z.string(),
+              spent: z.string(),
+              remaining: z.string(),
+              percentageUsed: z.number(),
+              category: z.object({
+                id: z.string(),
+                label: z.string(),
+                color: z.string(),
+                icon: z.string().nullable()
+              }).nullable()
+            })),
+            month: z.string()
+          })
+        }
+      }
+    }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user') as { id: string };
   const { month: validMonth } = c.req.valid('query');
   const month = validMonth || new Date().toISOString().slice(0, 7); // Default to current YYYY-MM
@@ -101,8 +113,72 @@ app.get('/', zValidator('query', listQuerySchema), async (c) => {
   });
 });
 
-// POST /api/budgets - Upsert budget (category + month = unique)
-app.post('/', zValidator('json', upsertSchema), async (c) => {
+const upsertSchema = z.object({
+  categoryId: z.string(),
+  limitAmount: z.union([z.string(), z.number()]).transform((v) => {
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return num.toFixed(2);
+  }),
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+});
+
+app.openapi({
+  method: 'post',
+  path: '/',
+  summary: 'Upsert budget limits',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: upsertSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: z.object({
+            id: z.string(),
+            userId: z.string(),
+            categoryId: z.string(),
+            limitAmount: z.string(),
+            month: z.string(),
+            updated: z.boolean()
+          })
+        }
+      }
+    },
+    201: {
+      description: 'Created',
+      content: {
+        'application/json': {
+          schema: z.object({
+            id: z.string(),
+            userId: z.string(),
+            categoryId: z.string(),
+            limitAmount: z.string(),
+            month: z.string(),
+            updated: z.boolean()
+          })
+        }
+      }
+    },
+    400: {
+      description: 'Validation failure',
+      content: {
+        'application/json': {
+          schema: z.object({
+            error: z.string()
+          })
+        }
+      }
+    }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user') as { id: string };
   const data = c.req.valid('json');
 
@@ -137,7 +213,7 @@ app.post('/', zValidator('json', upsertSchema), async (c) => {
     return c.json({
       ...result[0],
       updated: true,
-    });
+    }, 200);
   }
 
   // Create new budget
@@ -157,10 +233,35 @@ app.post('/', zValidator('json', upsertSchema), async (c) => {
   }, 201);
 });
 
-// PUT /api/budgets/:id - Update limit amount
-app.put('/:id', zValidator('json', updateSchema), async (c) => {
+const updateSchema = z.object({
+  limitAmount: z.union([z.string(), z.number()]).transform((v) => {
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return num.toFixed(2);
+  }),
+});
+
+app.openapi({
+  method: 'put',
+  path: '/{id}',
+  summary: 'Update budget limits',
+  request: {
+    params: z.object({ id: z.string() }),
+    body: {
+      content: {
+        'application/json': {
+          schema: updateSchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: { description: 'Success' },
+    404: { description: 'Not Found' }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user') as { id: string };
-  const id = c.req.param('id');
+  const { id } = c.req.valid('param');
   const { limitAmount } = c.req.valid('json');
 
   // Check ownership
@@ -188,10 +289,21 @@ app.put('/:id', zValidator('json', updateSchema), async (c) => {
   return c.json(result[0]);
 });
 
-// DELETE /api/budgets/:id - Remove budget limit (owner check)
-app.delete('/:id', async (c) => {
+app.openapi({
+  method: 'delete',
+  path: '/{id}',
+  summary: 'Delete budget limits',
+  request: {
+    params: z.object({ id: z.string() })
+  },
+  responses: {
+    200: { description: 'Success' },
+    404: { description: 'Not Found' }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user') as { id: string };
-  const id = c.req.param('id');
+  const { id } = c.req.valid('param');
 
   // Check ownership
   const existing = await db.query.budgets.findFirst({

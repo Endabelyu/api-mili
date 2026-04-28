@@ -1,31 +1,34 @@
-/* eslint-disable @typescript-eslint/triple-slash-reference */
-/// <reference path="../types/hono.d.ts" />
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import { z } from 'zod';
+import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { eq, and, gte, sql, desc, SQL } from 'drizzle-orm';
 import { db } from '@server/lib/db';
 import { transactions, categories } from '@db/schema';
 import { requireAuth } from '@server/lib/auth-middleware.server';
 import { readLimiter } from '@server/lib/rate-limit';
 
-const app = new Hono();
-
-// Query schemas
-const monthQuerySchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
-});
-
-const monthsQuerySchema = z.object({
-  months: z.string().transform(Number).default('6'),
-});
+const app = new OpenAPIHono();
+const API_TAGS = ['Reports'];
 
 // Apply auth + rate limiting to all routes
 app.use('*', requireAuth);
 app.use('*', readLimiter);
 
-// GET /api/reports/summary?month=YYYY-MM - Financial summary
-app.get('/summary', zValidator('query', monthQuerySchema), async (c) => {
+const monthQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+});
+
+app.openapi({
+  method: 'get',
+  path: '/summary',
+  summary: 'Get financial summary',
+  description: 'Aggregates transactional metadata safely.',
+  request: {
+    query: monthQuerySchema
+  },
+  responses: {
+    200: { description: 'Success' }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user') as { id: string };
   const { month } = c.req.valid('query');
 
@@ -87,8 +90,18 @@ app.get('/summary', zValidator('query', monthQuerySchema), async (c) => {
   });
 });
 
-// GET /api/reports/by-category?month=YYYY-MM - Category breakdown
-app.get('/by-category', zValidator('query', monthQuerySchema), async (c) => {
+app.openapi({
+  method: 'get',
+  path: '/by-category',
+  summary: 'Get category breakdown',
+  request: {
+    query: monthQuerySchema
+  },
+  responses: {
+    200: { description: 'Success' }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user') as { id: string };
   const { month } = c.req.valid('query');
 
@@ -144,10 +157,25 @@ app.get('/by-category', zValidator('query', monthQuerySchema), async (c) => {
   return c.json({ items: result });
 });
 
-// GET /api/reports/monthly?months=6 - Monthly trend
-app.get('/monthly', zValidator('query', monthsQuerySchema), async (c) => {
+const monthsQuerySchema = z.object({
+  months: z.string().optional().default('6'),
+});
+
+app.openapi({
+  method: 'get',
+  path: '/monthly',
+  summary: 'Get monthly trend',
+  request: {
+    query: monthsQuerySchema
+  },
+  responses: {
+    200: { description: 'Success' }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user') as { id: string };
-  const { months } = c.req.valid('query');
+  const query = c.req.valid('query');
+  const months = Number(query.months || '6');
 
   // Generate last N months
   const monthsList: string[] = [];

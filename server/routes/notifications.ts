@@ -18,6 +18,42 @@ app.openapi({
   responses: {
     200: {
       description: 'List of alerts',
+      content: {
+        'application/json': {
+          schema: z.object({
+            items: z.array(z.object({
+              id: z.string(),
+              title: z.string(),
+              amount: z.string().nullable(),
+              time: z.string().nullable(),
+              icon: z.string().nullable(),
+              color: z.string().nullable(),
+              iconColor: z.string().nullable(),
+              unread: z.boolean(),
+            }))
+          })
+        }
+      }
+    },
+    401: {
+      description: 'Unauthorized access',
+      content: {
+        'application/json': {
+          schema: z.object({
+            message: z.string()
+          })
+        }
+      }
+    },
+    500: {
+      description: 'Internal Server Error',
+      content: {
+        'application/json': {
+          schema: z.object({
+            message: z.string()
+          })
+        }
+      }
     }
   },
   tags: API_TAGS
@@ -154,7 +190,26 @@ app.openapi({
   path: '/mark-all-read',
   summary: 'Mark all alerts as read',
   responses: {
-    200: { description: 'Success' }
+    200: {
+      description: 'Success status',
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean()
+          })
+        }
+      }
+    },
+    401: {
+      description: 'Unauthorized access',
+      content: {
+        'application/json': {
+          schema: z.object({
+            message: z.string()
+          })
+        }
+      }
+    }
   },
   tags: API_TAGS
 }, async (c) => {
@@ -178,8 +233,36 @@ app.openapi({
     })
   },
   responses: {
-    200: { description: 'Success' },
-    400: { description: 'Invalid UUID' }
+    200: {
+      description: 'Success status',
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean()
+          })
+        }
+      }
+    },
+    400: {
+      description: 'Invalid UUID provided',
+      content: {
+        'application/json': {
+          schema: z.object({
+            message: z.string()
+          })
+        }
+      }
+    },
+    401: {
+      description: 'Unauthorized access',
+      content: {
+        'application/json': {
+          schema: z.object({
+            message: z.string()
+          })
+        }
+      }
+    }
   },
   tags: API_TAGS
 }, async (c) => {
