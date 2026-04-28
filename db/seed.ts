@@ -10,7 +10,7 @@ const defaultCategories = [
   { id: 'kopi', label: 'Kopi', color: '#7A5AF8', icon: '☕', type: 'expense' },
   { id: 'transport', label: 'Transport', color: '#2E90FA', icon: '🚗', type: 'expense' },
   { id: 'belanja', label: 'Belanja', color: '#EE46BC', icon: '🛍️', type: 'expense' },
-  { id: 'belanjaan', label: 'Belanjaan', color: '#12B76A', icon: '🛒', type: 'expense' },
+  { id: 'belanjaan', label: 'Belanjaan', color: '#15803D', icon: '🛒', type: 'expense' },
   { id: 'tagihan', label: 'Tagihan', color: '#667085', icon: '📄', type: 'expense' },
   { id: 'sewa', label: 'Sewa', color: '#B54708', icon: '🏠', type: 'expense' },
   { id: 'kesehatan', label: 'Kesehatan', color: '#F04438', icon: '💊', type: 'expense' },
@@ -28,7 +28,7 @@ const defaultCategories = [
   { id: 'donasi', label: 'Donasi', color: '#F04438', icon: '❤️', type: 'expense' },
   
   // Income categories
-  { id: 'gaji', label: 'Gaji', color: '#12B76A', icon: '💰', type: 'income' },
+  { id: 'gaji', label: 'Gaji', color: '#15803D', icon: '💰', type: 'income' },
   { id: 'bonus', label: 'Bonus', color: '#F79009', icon: '🎁', type: 'income' },
   { id: 'investasi', label: 'Investasi', color: '#2E90FA', icon: '📈', type: 'income' },
 ];
@@ -65,7 +65,7 @@ async function main() {
   console.log('Inserting accounts...');
   const demoAccounts = [
     { name: 'Saham', type: 'investment', balance: '25000000', color: '#EE46BC', userId },
-    { name: 'Reksa Dana', type: 'investment', balance: '10000000', color: '#12B76A', userId },
+    { name: 'Reksa Dana', type: 'investment', balance: '10000000', color: '#15803D', userId },
     { name: 'Deposito', type: 'bank', balance: '50000000', color: '#0BA5EC', userId },
     { name: 'Tabungan Bank', type: 'bank', balance: '15000000', color: '#2E90FA', userId, isDefault: true },
     { name: 'Emas', type: 'investment', balance: '5000000', color: '#F79009', userId },

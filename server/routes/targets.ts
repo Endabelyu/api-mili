@@ -16,7 +16,7 @@ const createTargetSchema = z.object({
   targetAmount: z.string().or(z.number()).transform(v => String(v)),
   currentAmount: z.string().or(z.number()).optional().default('0').transform(v => String(v)),
   deadline: z.string().optional().nullable(),
-  color: z.string().length(7).optional().default('#12B76A'),
+  color: z.string().length(7).optional().default('#15803D'),
   icon: z.string().optional().default('🎯'),
   status: z.enum(['active', 'completed', 'paused']).optional().default('active'),
 });

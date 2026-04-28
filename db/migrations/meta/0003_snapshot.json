@@ -52,7 +52,7 @@
           "type": "varchar(7)",
           "primaryKey": false,
           "notNull": true,
-          "default": "'#12B76A'"
+          "default": "'#15803D'"
         },
         "icon": {
           "name": "icon",
@@ -716,7 +716,7 @@
           "type": "varchar(7)",
           "primaryKey": false,
           "notNull": true,
-          "default": "'#12B76A'"
+          "default": "'#15803D'"
         },
         "icon": {
           "name": "icon",

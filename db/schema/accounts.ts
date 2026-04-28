@@ -10,7 +10,7 @@ export const accounts = pgTable('accounts', {
   type: varchar('type', { length: 50 }).notNull(), // 'bank' | 'e-wallet' | 'cash' | 'investment' | 'credit-card'
   balance: decimal('balance', { precision: 15, scale: 2 }).notNull().default('0'),
   currency: varchar('currency', { length: 10 }).notNull().default('IDR'),
-  color: varchar('color', { length: 7 }).notNull().default('#12B76A'),
+  color: varchar('color', { length: 7 }).notNull().default('#15803D'),
   icon: varchar('icon', { length: 50 }),
   isDefault: boolean('is_default').default(false),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),

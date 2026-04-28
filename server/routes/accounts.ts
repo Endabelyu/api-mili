@@ -18,7 +18,7 @@ const createAccountSchema = z.object({
   type: z.enum(['bank', 'e-wallet', 'cash', 'investment', 'credit-card']),
   balance: z.string().or(z.number()).transform(v => String(v)),
   currency: z.string().min(1).max(10).optional().default('IDR'),
-  color: z.string().length(7).optional().default('#12B76A'),
+  color: z.string().length(7).optional().default('#15803D'),
   icon: z.string().optional(),
   isDefault: z.boolean().optional().default(false),
 });
