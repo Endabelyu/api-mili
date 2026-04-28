@@ -12,7 +12,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import apiRoutes from './routes';
 import { monitoringMiddleware, getMetrics, getPrometheusMetrics, logMetricsSnapshot } from './lib/monitoring';
 import { logger as appLogger } from './lib/logger';
-import { swaggerUI } from '@hono/swagger-ui';
+import { apiReference } from '@scalar/hono-api-reference';
 import { openApiSpec } from './openapi';
 import { db, pingDb } from './lib/db';
 import { csrf } from 'hono/csrf';
@@ -308,9 +308,9 @@ app.get('/openapi.json', (c) => {
   });
 });
 
-// Swagger UI dashboard — disabled in production
+// OpenAPI Scalar UI dashboard — disabled in production
 if (process.env.NODE_ENV !== 'production') {
-  app.get('/docs', swaggerUI({ url: '/openapi.json' }));
+  app.get('/docs', apiReference({ spec: { url: '/openapi.json' } }));
 }
 
 // Error handler

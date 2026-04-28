@@ -50,6 +50,13 @@
       "when": 1777243715732,
       "tag": "0006_strange_malice",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777342634172,
+      "tag": "0007_previous_millenium_guard",
+      "breakpoints": true
     }
   ]
 }

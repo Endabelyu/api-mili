@@ -1,15 +1,27 @@
-import { Hono } from 'hono';
+import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
 import { db } from '../lib/db';
 import { notifications, budgets, transactions, targets, scheduledTransactions } from '../../db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 
-const app = new Hono();
+const app = new OpenAPIHono();
+const API_TAGS = ['Notifications'];
 
 app.use('*', requireAuth);
 
-app.get('/', async (c) => {
+app.openapi({
+  method: 'get',
+  path: '/',
+  summary: 'Get dynamic notifications',
+  description: 'Calculates alerts on-the-fly and returns unread notifications.',
+  responses: {
+    200: {
+      description: 'List of alerts',
+    }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user');
   if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
 
@@ -134,10 +146,18 @@ app.get('/', async (c) => {
     orderBy: (notifications, { desc }) => [desc(notifications.createdAt)],
   });
 
-  return c.json({ items: finalItems });
+  return c.json({ items: finalItems }, 200);
 });
 
-app.post('/mark-all-read', async (c) => {
+app.openapi({
+  method: 'post',
+  path: '/mark-all-read',
+  summary: 'Mark all alerts as read',
+  responses: {
+    200: { description: 'Success' }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user');
   if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
 
@@ -145,19 +165,33 @@ app.post('/mark-all-read', async (c) => {
     .set({ unread: false })
     .where(and(eq(notifications.userId, user.id), eq(notifications.unread, true)));
 
-  return c.json({ success: true });
+  return c.json({ success: true }, 200);
 });
 
-app.put('/:id/read', async (c) => {
+app.openapi({
+  method: 'put',
+  path: '/:id/read',
+  summary: 'Mark individual alert as read',
+  request: {
+    params: z.object({
+      id: z.string().uuid()
+    })
+  },
+  responses: {
+    200: { description: 'Success' },
+    400: { description: 'Invalid UUID' }
+  },
+  tags: API_TAGS
+}, async (c) => {
   const user = c.get('user');
   if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
 
-  const { id } = c.req.param();
+  const { id } = c.req.valid('param');
   await db.update(notifications)
     .set({ unread: false })
     .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
 
-  return c.json({ success: true });
+  return c.json({ success: true }, 200);
 });
 
 export default app;
