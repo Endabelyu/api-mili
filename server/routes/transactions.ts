@@ -68,6 +68,37 @@ app.openapi({
   return c.json(result);
 });
 
+app.openapi({
+  method: 'get',
+  path: '/{id}',
+  summary: 'Get transaction by id',
+  request: {
+    params: z.object({ id: z.string() })
+  },
+  responses: {
+    200: {
+      description: 'Success',
+      content: {
+        'application/json': {
+          schema: z.any()
+        }
+      }
+    },
+    404: { description: 'Not Found' }
+  },
+  tags: API_TAGS
+}, async (c) => {
+  const user = c.get('user') as { id: string };
+  const { id } = c.req.valid('param');
+  
+  const result = await transactionService.getTransactionById(id, user.id);
+  if (!result) {
+    throw new HTTPException(404, { message: 'Transaction not found' });
+  }
+
+  return c.json(result);
+});
+
 // Create transaction schema
 const createSchema = z.object({
   type: z.enum(['income', 'expense', 'transfer']),

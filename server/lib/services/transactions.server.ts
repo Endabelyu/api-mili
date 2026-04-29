@@ -69,6 +69,17 @@ export async function listTransactions(options: ListTransactionsOptions) {
   };
 }
 
+export async function getTransactionById(id: string, userId: string) {
+  return await db.query.transactions.findFirst({
+    where: and(eq(transactions.id, id), eq(transactions.userId, userId)),
+    with: { 
+      category: true,
+      account: true,
+      toAccount: true
+    },
+  });
+}
+
 export interface CreateTransactionInput {
   userId: string;
   type: 'income' | 'expense' | 'transfer';
