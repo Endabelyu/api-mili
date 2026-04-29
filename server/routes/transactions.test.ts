@@ -18,8 +18,8 @@ type MockDb = {
 };
 
 // Mock the database
-vi.mock('@server/lib/db', () => ({
-  db: {
+vi.mock('@server/lib/db', () => {
+  const mockDb = {
     query: {
       transactions: {
         findMany: vi.fn(),
@@ -33,8 +33,12 @@ vi.mock('@server/lib/db', () => ({
     insert: vi.fn(() => ({ values: vi.fn(() => ({ returning: vi.fn() })) })),
     update: vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn(() => ({ returning: vi.fn() })) })) })),
     delete: vi.fn(() => ({ where: vi.fn() })),
-  },
-}));
+    transaction: vi.fn(async (callback) => {
+      return await callback(mockDb);
+    }),
+  };
+  return { db: mockDb };
+});
 
 // Mock auth middleware - use c.set for Hono context
 vi.mock('@server/lib/auth-middleware.server', () => ({

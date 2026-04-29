@@ -58,7 +58,7 @@ app.openapi({
   const result = await transactionService.listTransactions({
     userId: user.id,
     month: query.month,
-    type: query.type as any,
+    type: query.type as 'income' | 'expense' | 'transfer',
     category: query.category,
     search: query.search,
     page: Number(query.page),
@@ -157,8 +157,9 @@ app.openapi({
       userId: user.id,
     });
     return c.json(result, 201);
-  } catch (err: any) {
-    return c.json({ error: err.message }, 400);
+  } catch (err) {
+    const error = err as Error;
+    return c.json({ error: error.message }, 400);
   }
 });
 
@@ -205,11 +206,13 @@ app.openapi({
   try {
     const result = await transactionService.updateTransaction(id, user.id, data);
     return c.json(result);
-  } catch (err: any) {
-    if (err.status) {
-      throw new HTTPException(err.status, { message: err.message });
+  } catch (err) {
+    const error = err as { status?: number; message: string };
+    if (error.status) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return c.json({ error: error.message }, error.status as any);
     }
-    throw err;
+    return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
 
@@ -233,11 +236,13 @@ app.openapi({
   try {
     const result = await transactionService.deleteTransaction(id, user.id);
     return c.json(result);
-  } catch (err: any) {
-    if (err.status) {
-      throw new HTTPException(err.status, { message: err.message });
+  } catch (err) {
+    const error = err as { status?: number; message: string };
+    if (error.status) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return c.json({ error: error.message }, error.status as any);
     }
-    throw err;
+    return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
 

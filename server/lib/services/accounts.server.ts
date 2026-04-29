@@ -7,12 +7,13 @@ export async function adjustAccountBalance(
   accountId: string,
   amount: string,
   operation: 'add' | 'subtract',
-  tx: any = db
+  tx: unknown = db
 ) {
   const amountNum = parseFloat(amount);
   const adjustment = operation === 'add' ? amountNum : -amountNum;
 
-  await tx
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (tx as any)
     .update(accounts)
     .set({
       balance: sql`${accounts.balance} + ${adjustment}`,
@@ -31,23 +32,24 @@ export interface TransactionBalanceInfo {
 export async function processTransactionBalance(
   transaction: TransactionBalanceInfo,
   direction: 'forward' | 'reverse',
-  tx: any = db
+  tx: unknown = db
 ) {
   const { type, amount, accountId, toAccountId } = transaction;
 
   if (!accountId) return;
 
   const isForward = direction === 'forward';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const t = tx as any;
 
   if (type === 'income') {
-    await adjustAccountBalance(accountId, amount, isForward ? 'add' : 'subtract', tx);
+    await adjustAccountBalance(accountId, amount, isForward ? 'add' : 'subtract', t);
   } else if (type === 'expense') {
-    await adjustAccountBalance(accountId, amount, isForward ? 'subtract' : 'add', tx);
+    await adjustAccountBalance(accountId, amount, isForward ? 'subtract' : 'add', t);
   } else if (type === 'transfer' && toAccountId) {
     // Subtract from source
-    await adjustAccountBalance(accountId, amount, isForward ? 'subtract' : 'add', tx);
+    await adjustAccountBalance(accountId, amount, isForward ? 'subtract' : 'add', t);
     // Add to destination
-    await adjustAccountBalance(toAccountId, amount, isForward ? 'add' : 'subtract', tx);
+    await adjustAccountBalance(toAccountId, amount, isForward ? 'add' : 'subtract', t);
   }
 }
-

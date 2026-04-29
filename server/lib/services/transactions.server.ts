@@ -135,11 +135,15 @@ export interface UpdateTransactionInput {
 export async function updateTransaction(id: string, userId: string, input: UpdateTransactionInput) {
   return await db.transaction(async (tx) => {
     const existing = await tx.query.transactions.findFirst({
-      where: and(eq(transactions.id, id), eq(transactions.userId, userId)),
+      where: eq(transactions.id, id),
     });
 
     if (!existing) {
       throw Object.assign(new Error('Transaction not found'), { status: 404 });
+    }
+
+    if (existing.userId !== userId) {
+      throw Object.assign(new Error('Forbidden'), { status: 403 });
     }
 
     // 1. Reverse old balance impact
@@ -179,11 +183,15 @@ export async function updateTransaction(id: string, userId: string, input: Updat
 export async function deleteTransaction(id: string, userId: string) {
   return await db.transaction(async (tx) => {
     const existing = await tx.query.transactions.findFirst({
-      where: and(eq(transactions.id, id), eq(transactions.userId, userId)),
+      where: eq(transactions.id, id),
     });
 
     if (!existing) {
       throw Object.assign(new Error('Transaction not found'), { status: 404 });
+    }
+
+    if (existing.userId !== userId) {
+      throw Object.assign(new Error('Forbidden'), { status: 403 });
     }
 
     // Reverse balance impact before deletion
