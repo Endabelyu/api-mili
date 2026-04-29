@@ -11,6 +11,7 @@ export const scheduledTransactions = pgTable('scheduled_transactions', {
   amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
   categoryId: varchar('category_id').notNull().references(() => categories.id),
   accountId: uuid('account_id').references(() => accounts.id),
+  toAccountId: uuid('to_account_id').references(() => accounts.id), // For recurring transfers
   description: text('description'),
   frequency: varchar('frequency', { length: 20 }).notNull(), // 'daily' | 'weekly' | 'monthly' | 'yearly'
   nextRunDate: timestamp('next_run_date', { mode: 'date' }).notNull(),
@@ -22,7 +23,8 @@ export const scheduledTransactions = pgTable('scheduled_transactions', {
 export const scheduledTransactionsRelations = relations(scheduledTransactions, ({ one }) => ({
   user: one(users, { fields: [scheduledTransactions.userId], references: [users.id] }),
   category: one(categories, { fields: [scheduledTransactions.categoryId], references: [categories.id] }),
-  account: one(accounts, { fields: [scheduledTransactions.accountId], references: [accounts.id] }),
+  account: one(accounts, { fields: [scheduledTransactions.accountId], references: [accounts.id], relationName: 'scheduledFromAccount' }),
+  toAccount: one(accounts, { fields: [scheduledTransactions.toAccountId], references: [accounts.id], relationName: 'scheduledToAccount' }),
 }));
 
 export type ScheduledTransaction = typeof scheduledTransactions.$inferSelect;

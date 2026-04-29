@@ -12,10 +12,11 @@ const app = new Hono();
 app.use('*', requireAuth);
 
 const createScheduledSchema = z.object({
-  type: z.enum(['income', 'expense']),
+  type: z.enum(['income', 'expense', 'transfer']),
   amount: z.string().or(z.number()).transform(v => String(v)),
   categoryId: z.string().min(1),
   accountId: z.string().uuid().optional().nullable(),
+  toAccountId: z.string().uuid().optional().nullable(),
   description: z.string().optional().nullable(),
   frequency: z.enum(['daily', 'weekly', 'monthly', 'yearly']),
   nextRunDate: z.string().min(1),
@@ -34,6 +35,7 @@ app.get('/', async (c) => {
     with: {
       category: true,
       account: true,
+      toAccount: true,
     },
     orderBy: (scheduledTransactions, { desc }) => [desc(scheduledTransactions.createdAt)],
   });

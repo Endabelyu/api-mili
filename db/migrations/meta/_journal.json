@@ -57,6 +57,13 @@
       "when": 1777342634172,
       "tag": "0007_previous_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777449981272,
+      "tag": "0008_common_thaddeus_ross",
+      "breakpoints": true
     }
   ]
 }

@@ -3,43 +3,85 @@ import { db } from '@server/lib/db';
 import { categories, users, transactions, budgets, accounts } from './schema';
 import { eq } from 'drizzle-orm';
 
-// New requested categories from screenshot
 const defaultCategories = [
-  // Expense categories
-  { id: 'makan', label: 'Makan', color: '#F97066', icon: '🍽️', type: 'expense' },
-  { id: 'kopi', label: 'Kopi', color: '#7A5AF8', icon: '☕', type: 'expense' },
-  { id: 'transport', label: 'Transport', color: '#2E90FA', icon: '🚗', type: 'expense' },
-  { id: 'belanja', label: 'Belanja', color: '#EE46BC', icon: '🛍️', type: 'expense' },
-  { id: 'belanjaan', label: 'Belanjaan', color: '#15803D', icon: '🛒', type: 'expense' },
-  { id: 'tagihan', label: 'Tagihan', color: '#667085', icon: '📄', type: 'expense' },
-  { id: 'sewa', label: 'Sewa', color: '#B54708', icon: '🏠', type: 'expense' },
-  { id: 'kesehatan', label: 'Kesehatan', color: '#F04438', icon: '💊', type: 'expense' },
-  { id: 'hiburan', label: 'Hiburan', color: '#6172F3', icon: '🎬', type: 'expense' },
-  { id: 'langganan', label: 'Langganan', color: '#EE46BC', icon: '📺', type: 'expense' },
-  { id: 'pendidikan', label: 'Pendidikan', color: '#0BA5EC', icon: '📚', type: 'expense' },
-  { id: 'olahraga', label: 'Olahraga', color: '#F79009', icon: '🏋️', type: 'expense' },
-  { id: 'perjalanan', label: 'Perjalanan', color: '#079455', icon: '✈️', type: 'expense' },
-  { id: 'hadiah', label: 'Hadiah', color: '#F670C7', icon: '🎁', type: 'expense' },
-  { id: 'peliharaan', label: 'Peliharaan', color: '#717BBC', icon: '🐾', type: 'expense' },
-  { id: 'kecantikan', label: 'Kecantikan', color: '#FD6974', icon: '💄', type: 'expense' },
-  { id: 'telepon', label: 'Telepon', color: '#53389E', icon: '📱', type: 'expense' },
-  { id: 'internet', label: 'Internet', color: '#0086C9', icon: '🌐', type: 'expense' },
-  { id: 'pajak', label: 'Pajak', color: '#475467', icon: '🏛️', type: 'expense' },
-  { id: 'donasi', label: 'Donasi', color: '#F04438', icon: '❤️', type: 'expense' },
+  // --- 🏦 AKUN (Account Types) ---
+  { id: 'acc-bank', label: 'Bank', color: '#2E90FA', icon: '🏦', type: 'both' },
+  { id: 'acc-credit', label: 'Kartu Kredit', color: '#F04438', icon: '💳', type: 'both' },
+  { id: 'acc-cash', label: 'Tunai', color: '#12B76A', icon: '👛', type: 'both' },
+  { id: 'acc-crypto', label: 'Crypto', color: '#F79009', icon: '🪙', type: 'both' },
+  { id: 'acc-investment', label: 'Investasi', color: '#6172F3', icon: '📈', type: 'both' },
+
+  // --- 🎯 TARGET / GOALS ---
+  { id: 'goal-savings', label: 'Tabungan', color: '#F670C7', icon: 'category_savings', type: 'expense' },
+  { id: 'goal-house', label: 'Rumah', color: '#B54708', icon: 'category_housing', type: 'expense' },
+  { id: 'goal-car', label: 'Mobil', color: '#475467', icon: 'category_car', type: 'expense' },
+  { id: 'goal-education', label: 'Pendidikan', color: '#0BA5EC', icon: 'category_education', type: 'expense' },
+  { id: 'goal-wedding', label: 'Pernikahan', color: '#F670C7', icon: 'category_wedding', type: 'expense' },
+  { id: 'goal-travel', label: 'Liburan', color: '#079455', icon: 'category_travel', type: 'expense' },
+  { id: 'goal-retirement', label: 'Pensiun', color: '#F79009', icon: '👴', type: 'expense' },
+  { id: 'goal-emergency', label: 'Dana Darurat', color: '#F04438', icon: 'category_emergency', type: 'expense' },
+  { id: 'goal-gadget', label: 'Gadget', color: '#53389E', icon: 'category_gadget', type: 'expense' },
+  { id: 'goal-charity', label: 'Zakat/Sedekah', color: '#12B76A', icon: 'category_charity', type: 'expense' },
+  { id: 'goal-hajj', label: 'Haji/Umrah', color: '#065F46', icon: 'category_hajj', type: 'expense' },
+
+  // --- 📋 ANGGARAN & TAGIAN (Bills) ---
+  { id: 'bill-rent', label: 'Sewa/KPR', color: '#B54708', icon: 'category_housing', type: 'expense' },
+  { id: 'bill-insurance', label: 'Asuransi', color: '#667085', icon: '🛡️', type: 'expense' },
+  { id: 'bill-tax', label: 'Pajak', color: '#475467', icon: '📄', type: 'expense' },
+  { id: 'bill-water', label: 'Air', color: '#0086C9', icon: '💧', type: 'expense' },
+  { id: 'bill-electric', label: 'Listrik', color: '#F79009', icon: 'category_electric', type: 'expense' },
+  { id: 'bill-internet', label: 'Internet/WiFi', color: '#6172F3', icon: '📶', type: 'expense' },
+  { id: 'bill-gas', label: 'Gas/LPG', color: '#F04438', icon: '🔥', type: 'expense' },
+  { id: 'bill-phone', label: 'Pulsa', color: '#EE46BC', icon: 'category_bills', type: 'expense' },
+  { id: 'bill-streaming', label: 'Streaming', color: '#E31B23', icon: 'category_entertainment', type: 'expense' },
+
+  // --- 🛒 PENGELUARAN HARIAN (Daily) ---
+  { id: 'makan', label: 'Makan & Minum', color: '#F97066', icon: 'category_food', type: 'expense' },
+  { id: 'belanja', label: 'Belanja Dapur', color: '#EE46BC', icon: 'category_shopping', type: 'expense' },
+  { id: 'kopi', label: 'Kopi/Kafe', color: '#B54708', icon: 'category_food', type: 'expense' },
+  { id: 'transport', label: 'Transportasi', color: '#2E90FA', icon: 'category_transport', type: 'expense' },
+  { id: 'bensin', label: 'Bensin/BBM', color: '#475467', icon: '⛽', type: 'expense' },
+  { id: 'parkir', label: 'Parkir/Tol', color: '#667085', icon: '🅿️', type: 'expense' },
+  { id: 'pakaian', label: 'Pakaian', color: '#717BBC', icon: '👔', type: 'expense' },
+  { id: 'perawatan', label: 'Perawatan Diri', color: '#F670C7', icon: '🧴', type: 'expense' },
+
+  // --- 👨👩👧 KELUARGA & ANAK ---
+  { id: 'fam-baby', label: 'Kebutuhan Bayi', color: '#0BA5EC', icon: '👶', type: 'expense' },
+  { id: 'fam-school', label: 'Sekolah Anak', color: '#6172F3', icon: '🏫', type: 'expense' },
+  { id: 'fam-toy', label: 'Mainan/Hiburan', color: '#F79009', icon: '🧸', type: 'expense' },
+  { id: 'fam-parents', label: 'Orang Tua', color: '#717BBC', icon: '👵', type: 'expense' },
+
+  // --- 💊 KESEHATAN ---
+  { id: 'health-med', label: 'Obat-obatan', color: '#F04438', icon: 'category_health', type: 'expense' },
+  { id: 'health-doctor', label: 'Dokter/RS', color: '#F97066', icon: 'category_health', type: 'expense' },
+  { id: 'health-gym', label: 'Gym/Olahraga', color: '#12B76A', icon: '🏋️', type: 'expense' },
+
+  // --- 💼 PEMASUKAN ---
+  { id: 'gaji', label: 'Gaji', color: '#15803D', icon: 'category_salary', type: 'income' },
+  { id: 'bonus', label: 'Bonus/THR', color: '#F79009', icon: '🎁', type: 'income' },
+  { id: 'freelance', label: 'Freelance', color: '#2E90FA', icon: 'category_freelance', type: 'income' },
+  { id: 'invest-profit', label: 'Profit Investasi', color: '#12B76A', icon: '💹', type: 'income' },
+  { id: 'sales', label: 'Penjualan', color: '#EE46BC', icon: '📦', type: 'income' },
+
+  // --- ⛓️ HUTANG & CICILAN ---
+  { id: 'debt-active', label: 'Bayar Hutang', color: '#475467', icon: '⛓️', type: 'expense' },
+  { id: 'debt-credit-card', label: 'Tagihan CC', color: '#F04438', icon: '💳', type: 'expense' },
+
+  // --- 🎲 LAIN-LAIN ---
+  { id: 'misc-hobby', label: 'Hobi', color: '#6172F3', icon: '🎸', type: 'expense' },
+  { id: 'misc-pet', label: 'Peliharaan', color: '#F79009', icon: 'category_pet', type: 'expense' },
+  { id: 'misc-unexpected', label: 'Tak Terduga', color: '#667085', icon: '🎲', type: 'expense' },
   
-  // Income categories
-  { id: 'gaji', label: 'Gaji', color: '#15803D', icon: '💰', type: 'income' },
-  { id: 'bonus', label: 'Bonus', color: '#F79009', icon: '🎁', type: 'income' },
-  { id: 'investasi', label: 'Investasi', color: '#2E90FA', icon: '📈', type: 'income' },
+  // --- SYSTEM ---
+  { id: 'transfer', label: 'Transfer', color: '#6172F3', icon: '💸', type: 'both' },
 ];
 
-// Demo user data
 const DEMO_USER_ID = 'demo-user-001';
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding database with updated icons...');
 
-  // 1. Create Demo User
+  // Create/Update Demo User
   const userResult = await db.insert(users).values({
     id: DEMO_USER_ID,
     email: 'demo@personalfinance.app',
@@ -52,8 +94,7 @@ async function main() {
 
   const userId = userResult[0].id;
 
-  // 2. Seed Categories
-  console.log('Inserting categories...');
+  console.log(`Inserting ${defaultCategories.length} categories...`);
   for (const cat of defaultCategories) {
     await db.insert(categories).values(cat).onConflictDoUpdate({
       target: categories.id,
@@ -61,14 +102,13 @@ async function main() {
     });
   }
 
-  // 3. Seed Accounts (from screenshot)
   console.log('Inserting accounts...');
   const demoAccounts = [
-    { name: 'Saham', type: 'investment', balance: '25000000', color: '#EE46BC', userId },
-    { name: 'Reksa Dana', type: 'investment', balance: '10000000', color: '#15803D', userId },
-    { name: 'Deposito', type: 'bank', balance: '50000000', color: '#0BA5EC', userId },
-    { name: 'Tabungan Bank', type: 'bank', balance: '15000000', color: '#2E90FA', userId, isDefault: true },
-    { name: 'Emas', type: 'investment', balance: '5000000', color: '#F79009', userId },
+    { name: 'Bank Mandiri', type: 'bank', balance: '15000000', color: '#2E90FA', userId, isDefault: true },
+    { name: 'BCA Tabungan', type: 'bank', balance: '50000000', color: '#0BA5EC', userId },
+    { name: 'Dompet Tunai', type: 'cash', balance: '500000', color: '#12B76A', userId },
+    { name: 'Gopay', type: 'e-wallet', balance: '1200000', color: '#0086C9', userId },
+    { name: 'Saham BBCA', type: 'investment', balance: '25000000', color: '#EE46BC', userId },
   ];
 
   for (const acc of demoAccounts) {
