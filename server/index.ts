@@ -308,10 +308,12 @@ app.get('/openapi.json', (c) => {
   });
 });
 
-// OpenAPI Scalar UI dashboard — disabled in production
-if (process.env.NODE_ENV !== 'production') {
-  app.get('/docs', apiReference({ url: '/openapi.json' }));
-}
+// OpenAPI Scalar UI dashboard
+app.get('/docs', apiReference({ 
+  url: '/openapi.json',
+  theme: 'purple',
+  layout: 'modern'
+}));
 
 // Error handler
 import { HTTPException } from 'hono/http-exception';
