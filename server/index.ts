@@ -31,10 +31,8 @@ app.use(cors({
       'http://localhost:5173',
       'http://localhost:4016',
       'http://localhost:3000',
-      'https://finance-web.endabelyu.com',
-      'https://finance-api.endabelyu.com',
-      'http://finance-web.endabelyu.com',
-      'http://finance-api.endabelyu.com'
+      'https://mili.endabelyu.com',
+      'https://mili-api.endabelyu.com',
     ];
     if (!origin || allowedOrigins.some(o => origin.startsWith(o)) || origin.endsWith('.endabelyu.com')) return origin || '*';
     return null;
