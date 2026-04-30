@@ -21,9 +21,12 @@ export async function listTransactions(options: ListTransactionsOptions) {
 
   if (month) {
     const startDate = `${month}-01`;
-    const endDate = `${month}-31`;
+    const [year, monthNum] = month.split('-').map(Number);
+    const nextMonth = new Date(year, monthNum, 1);
+    const endDate = nextMonth.toISOString().slice(0, 10);
+    
     conditions.push(
-      sql`${transactions.date} >= ${startDate} AND ${transactions.date} <= ${endDate}`
+      sql`${transactions.date} >= ${startDate} AND ${transactions.date} < ${endDate}`
     );
   }
 

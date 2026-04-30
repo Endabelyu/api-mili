@@ -36,9 +36,10 @@ app.openapi({
   let dateCondition: SQL | undefined;
   if (month) {
     const startDate = `${month}-01`;
-    const [year, monthNum] = month.split('-');
-    const nextMonthDate = new Date(Number(year), Number(monthNum), 1);
-    const endDate = nextMonthDate.toISOString().slice(0, 10);
+    const [year, monthNum] = month.split('-').map(Number);
+    const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+    const nextYear = monthNum === 12 ? year + 1 : year;
+    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
     dateCondition = sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`;
   }
 
@@ -109,9 +110,10 @@ app.openapi({
   let dateCondition: SQL | undefined;
   if (month) {
     const startDate = `${month}-01`;
-    const [year, monthNum] = month.split('-');
-    const nextMonthDate = new Date(Number(year), Number(monthNum), 1);
-    const endDate = nextMonthDate.toISOString().slice(0, 10);
+    const [year, monthNum] = month.split('-').map(Number);
+    const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
+    const nextYear = monthNum === 12 ? year + 1 : year;
+    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
     dateCondition = sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`;
   }
 
