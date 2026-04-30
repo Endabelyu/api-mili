@@ -6,6 +6,26 @@ import { scheduledTransactions } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
+import * as transactionService from '../lib/services/transactions.server';
+
+function calculateNextRunDate(current: Date, frequency: string): Date {
+  const next = new Date(current);
+  switch (frequency) {
+    case 'daily':
+      next.setDate(next.getDate() + 1);
+      break;
+    case 'weekly':
+      next.setDate(next.getDate() + 7);
+      break;
+    case 'monthly':
+      next.setMonth(next.getMonth() + 1);
+      break;
+    case 'yearly':
+      next.setFullYear(next.getFullYear() + 1);
+      break;
+  }
+  return next;
+}
 
 const app = new Hono();
 
@@ -108,6 +128,51 @@ app.delete('/:id', async (c) => {
   await db.delete(scheduledTransactions).where(eq(scheduledTransactions.id, id));
 
   return new Response(null, { status: 204 });
+});
+
+// ─── Post Scheduled Transaction (Execute) ──────────────────────────────────
+app.post('/:id/post', async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id');
+  if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
+
+  const scheduled = await db.query.scheduledTransactions.findFirst({
+    where: and(eq(scheduledTransactions.id, id), eq(scheduledTransactions.userId, user.id)),
+  });
+
+  if (!scheduled) throw new HTTPException(404, { message: 'Scheduled transaction not found' });
+
+  try {
+    return await db.transaction(async (tx) => {
+      // 1. Create the actual transaction
+      await transactionService.createTransaction({
+        userId: user.id,
+        type: scheduled.type as 'income' | 'expense' | 'transfer',
+        amount: String(scheduled.amount),
+        categoryId: scheduled.categoryId,
+        accountId: scheduled.accountId || undefined,
+        toAccountId: scheduled.toAccountId || undefined,
+        description: scheduled.description || `Scheduled: ${scheduled.description || 'Auto-generated'}`,
+        date: new Date().toISOString().split('T')[0], // Today's date
+      });
+
+      // 2. Update next run date
+      const nextRun = calculateNextRunDate(new Date(scheduled.nextRunDate), scheduled.frequency);
+
+      const [updated] = await tx.update(scheduledTransactions)
+        .set({
+          nextRunDate: nextRun,
+          updatedAt: new Date(),
+        })
+        .where(eq(scheduledTransactions.id, id))
+        .returning();
+
+      return c.json({ success: true, item: updated });
+    });
+  } catch (err) {
+    const error = err as Error;
+    return c.json({ error: error.message }, 400);
+  }
 });
 
 export default app;

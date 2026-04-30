@@ -358,6 +358,28 @@ Phase 0  →  Phase 1  →  Phase 2  →  Phase 3  →  Phase 4  →  Phase 5  �
 - Design tokens system for consistent theming
 - 49 passing tests across auth, transactions, and components
 
-**Known Issues:**
 - JSX structural errors in some route files (pre-existing)
 - CLI commands partially implemented
+
+---
+
+### Current Sprint: Backend & UI Hardening (Hardening Sprint)
+- [x] Fix global "Back" button navigation across all pages (`navigate(-1)`)
+- [x] Standardize UI micro-interactions (`active:scale-95`) for navigation elements
+- [x] Complete site-wide Translation Audit (Dashboard, Transactions, Budget, Analytics, Targets, Accounts, Scheduled, Profile)
+- [x] Implement "Default Pocket" (Main Account) logic in UI and Backend
+- [x] Standardize Iconography for missing categories (Investment, Family, etc.)
+- [x] Create reusable `StatusToggle` component
+- [x] Resolve TypeScript build errors in modal payloads
+- [ ] Implement Account-based filtering for Transactions
+- [ ] Add "Pay Now" logic for Scheduled Transactions to auto-post records
+- [ ] Integrate FinanceAI CLI for scaffolding (Post-Hardening)
+
+---
+
+### Phase 6: FinanceAI CLI [PLANNED]
+- [ ] 6.1 Initialize CLI package with Commander.js
+- [ ] 6.2 Implement `financeai init` command
+- [ ] 6.3 Create templates for Hono routes
+- [ ] 6.4 Create templates for React Router pages
+- [ ] 6.5 Implement `financeai generate feature <name>`
