@@ -90,7 +90,7 @@ export interface CreateTransactionInput {
   categoryId: string;
   accountId?: string;
   toAccountId?: string;
-  description?: string;
+  description?: string | null;
   date: string;
 }
 
@@ -131,7 +131,7 @@ export interface UpdateTransactionInput {
   categoryId?: string;
   accountId?: string;
   toAccountId?: string;
-  description?: string;
+  description?: string | null;
   date?: string;
 }
 

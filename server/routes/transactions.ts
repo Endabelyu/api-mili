@@ -109,7 +109,7 @@ const createSchema = z.object({
   categoryId: z.string(),
   accountId: z.string().optional(),
   toAccountId: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   date: z.string().date(),
 });
 
@@ -174,7 +174,7 @@ const updateSchema = z.object({
   categoryId: z.string().optional(),
   accountId: z.string().optional(),
   toAccountId: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   date: z.string().date().optional(),
 });
 
