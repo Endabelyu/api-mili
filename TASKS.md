@@ -371,6 +371,8 @@ Phase 0  →  Phase 1  →  Phase 2  →  Phase 3  →  Phase 4  →  Phase 5  �
 - [x] Standardize Iconography for missing categories (Investment, Family, etc.)
 - [x] Create reusable `StatusToggle` component
 - [x] Resolve TypeScript build errors in modal payloads
+- [x] Fix 400 Bad Request in Transaction Modal (Zod null vs undefined)
+- [x] Fix 500 Internal Server Error in Monthly Filtering (Date boundary logic)
 - [ ] Implement Account-based filtering for Transactions
 - [ ] Add "Pay Now" logic for Scheduled Transactions to auto-post records
 - [ ] Integrate FinanceAI CLI for scaffolding (Post-Hardening)

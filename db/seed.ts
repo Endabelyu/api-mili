@@ -22,7 +22,9 @@ const defaultCategories = [
   { id: 'goal-emergency', label: 'Dana Darurat', color: '#F04438', icon: 'category_emergency', type: 'expense' },
   { id: 'goal-gadget', label: 'Gadget', color: '#53389E', icon: 'category_gadget', type: 'expense' },
   { id: 'goal-charity', label: 'Zakat/Sedekah', color: '#12B76A', icon: 'category_charity', type: 'expense' },
-  { id: 'goal-hajj', label: 'Haji/Umrah', color: '#065F46', icon: 'category_hajj', type: 'expense' },
+  { id: 'goal-hajj', label: 'Haji', color: '#065F46', icon: 'category_hajj', type: 'expense' },
+  { id: 'goal-umrah', label: 'Umrah', color: '#0086C9', icon: 'category_hajj', type: 'expense' },
+  { id: 'goal-qurban', label: 'Qurban', color: '#12B76A', icon: '🐑', type: 'expense' },
 
   // --- 📋 ANGGARAN & TAGIAN (Bills) ---
   { id: 'bill-rent', label: 'Sewa/KPR', color: '#B54708', icon: 'category_housing', type: 'expense' },
@@ -70,10 +72,10 @@ const defaultCategories = [
   // --- 🎲 LAIN-LAIN ---
   { id: 'misc-hobby', label: 'Hobi', color: '#6172F3', icon: 'category_hobby', type: 'expense' },
   { id: 'misc-pet', label: 'Peliharaan', color: '#F79009', icon: 'category_pet', type: 'expense' },
-  { id: 'misc-unexpected', label: 'Tak Terduga', color: '#667085', icon: 'category_general', type: 'expense' },
+  { id: 'misc-unexpected', label: 'Tak Terduga', color: '#667085', icon: 'category_emergency', type: 'expense' },
   
   // --- SYSTEM ---
-  { id: 'transfer', label: 'Transfer', color: '#6172F3', icon: 'category_general', type: 'both' },
+  { id: 'transfer', label: 'Transfer', color: '#6172F3', icon: 'category_cash', type: 'both' },
 ];
 
 const DEMO_USER_ID = 'demo-user-001';
