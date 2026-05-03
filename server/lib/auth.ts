@@ -2,6 +2,8 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from './db';
 import * as schema from '@db/schema';
+import { users } from '@db/schema';
+import { eq } from 'drizzle-orm';
 import { MiddlewareHandler } from 'hono';
 
 // Derive trusted origins from env — avoids hardcoding production URLs in source.
@@ -29,6 +31,12 @@ export const auth = betterAuth({
       verification: schema.verification
     },
   }),
+  user: {
+    additionalFields: {
+      role: { type: 'string', required: false, defaultValue: 'user' },
+      lastSeenAt: { type: 'date', required: false },
+    }
+  },
   baseURL: process.env.NODE_ENV === 'production'
     ? `${process.env.BETTER_AUTH_URL}/api/auth`
     : 'http://localhost:4015/api/auth',
@@ -62,5 +70,17 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   }
 
   c.set('user', session.user);
+
+  // Background update lastSeenAt (throttled to 5 mins)
+  const now = new Date();
+  const lastSeen = session.user.lastSeenAt ? new Date(session.user.lastSeenAt) : null;
+  if (!lastSeen || (now.getTime() - lastSeen.getTime() > 5 * 60 * 1000)) {
+    db.update(users)
+      .set({ lastSeenAt: now })
+      .where(eq(users.id, session.user.id))
+      .execute()
+      .catch(err => console.error('Failed to update lastSeenAt', err));
+  }
+
   await next();
 };
