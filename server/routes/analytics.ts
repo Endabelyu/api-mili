@@ -5,11 +5,13 @@ import { requireAuth } from '../lib/auth';
 import { eq, sql, desc } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
+import { Context, Next } from 'hono';
+
 const analytics = new Hono();
 
 // Middleware to ensure only developers can access analytics
-const requireDeveloper = async (c: any, next: any) => {
-  const user = c.get('user');
+const requireDeveloper = async (c: Context, next: Next) => {
+  const user = c.get('user') as { role?: string };
   if (user?.role !== 'developer') {
     throw new HTTPException(403, { message: 'Forbidden: Developer access required' });
   }
