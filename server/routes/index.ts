@@ -12,6 +12,7 @@ import targetsApp from './targets';
 import scheduledApp from './scheduled';
 import notificationsApp from './notifications';
 import ocrApp from './ocr';
+import feedbacksApp from './feedbacks';
 
 const apiRouter = new Hono()
   .route('/auth', authApp)
@@ -26,7 +27,8 @@ const apiRouter = new Hono()
   .route('/scheduled', scheduledApp)
   .route('/notifications', notificationsApp)
   .route('/consent', consentApp)
-  .route('/ocr', ocrApp);
+  .route('/ocr', ocrApp)
+  .route('/feedbacks', feedbacksApp);
 
 export default apiRouter;
 export type AppRoutes = typeof apiRouter;
