@@ -2,6 +2,7 @@ import { pgTable, text, boolean, timestamp } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { transactions } from './transactions';
 import { budgets } from './budgets';
+import { feedbacks } from './feedbacks';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -16,6 +17,7 @@ export const users = pgTable('users', {
 export const usersRelations = relations(users, ({ many }) => ({
   transactions: many(transactions),
   budgets: many(budgets),
+  feedbacks: many(feedbacks),
 }));
 
 export type User = typeof users.$inferSelect;
