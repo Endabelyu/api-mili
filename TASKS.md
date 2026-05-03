@@ -374,7 +374,7 @@ Phase 0  →  Phase 1  →  Phase 2  →  Phase 3  →  Phase 4  →  Phase 5  �
 - [x] Fix 400 Bad Request in Transaction Modal (Zod null vs undefined)
 - [x] Fix 500 Internal Server Error in Monthly Filtering (Date boundary logic)
 - [x] Implement Account-based filtering for Transactions
-- [ ] Add "Pay Now" logic for Scheduled Transactions to auto-post records
+- [x] Add "Pay Now" logic for Scheduled Transactions to auto-post records
 - [ ] Integrate FinanceAI CLI for scaffolding (Post-Hardening)
 
 ---
