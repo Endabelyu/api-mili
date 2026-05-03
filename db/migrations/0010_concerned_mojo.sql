@@ -1,0 +1,1 @@
+ALTER TABLE "feedbacks" ADD COLUMN "rating" integer DEFAULT 5 NOT NULL;

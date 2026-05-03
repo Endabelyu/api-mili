@@ -71,6 +71,13 @@
       "when": 1777781738773,
       "tag": "0009_spotty_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777787289549,
+      "tag": "0010_concerned_mojo",
+      "breakpoints": true
     }
   ]
 }

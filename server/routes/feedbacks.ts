@@ -13,6 +13,7 @@ app.use('*', requireAuth);
 
 const createSchema = z.object({
   message: z.string().min(1).max(2000),
+  rating: z.number().int().min(1).max(5).default(5),
 });
 
 app.openapi({
@@ -46,6 +47,7 @@ app.openapi({
   const [feedback] = await db.insert(feedbacks).values({
     userId: user.id,
     message: data.message,
+    rating: data.rating,
   }).returning();
 
   return c.json(feedback, 201);
@@ -81,6 +83,7 @@ app.openapi({
     .select({
       id: feedbacks.id,
       message: feedbacks.message,
+      rating: feedbacks.rating,
       createdAt: feedbacks.createdAt,
       user: {
         id: users.id,
