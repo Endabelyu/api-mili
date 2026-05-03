@@ -1,4 +1,4 @@
-import { eq, and, like, desc, sql, SQL } from 'drizzle-orm';
+import { eq, and, or, like, desc, sql, SQL } from 'drizzle-orm';
 import { db } from '@server/lib/db';
 import { transactions, categories } from '@db/schema';
 import { processTransactionBalance } from './accounts.server';
@@ -8,13 +8,14 @@ export interface ListTransactionsOptions {
   month?: string;
   type?: 'income' | 'expense' | 'transfer';
   category?: string;
+  account?: string;
   search?: string;
   page?: number;
   limit?: number;
 }
 
 export async function listTransactions(options: ListTransactionsOptions) {
-  const { userId, month, type, category, search, page = 1, limit = 20 } = options;
+  const { userId, month, type, category, account, search, page = 1, limit = 20 } = options;
   const offset = (page - 1) * limit;
 
   const conditions: (SQL | undefined)[] = [eq(transactions.userId, userId)];
@@ -36,6 +37,15 @@ export async function listTransactions(options: ListTransactionsOptions) {
 
   if (category) {
     conditions.push(eq(transactions.categoryId, category));
+  }
+
+  if (account) {
+    conditions.push(
+      or(
+        eq(transactions.accountId, account),
+        eq(transactions.toAccountId, account)
+      )
+    );
   }
 
   if (search) {
