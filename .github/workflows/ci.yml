@@ -104,7 +104,9 @@ jobs:
             timeout 30 sh -c 'until docker compose --env-file .env exec -T db pg_isready -U ${DB_USER:-postgres}; do sleep 2; done' || true
             # Rebuild and restart only the app container
             docker compose --env-file .env stop app
-            docker compose --env-file .env up -d --build --force-recreate --no-deps app
+            # FORCE clean build without cache
+            docker compose --env-file .env build --no-cache app
+            docker compose --env-file .env up -d --force-recreate --no-deps app
             # Run migrations after app starts
             sleep 5
             docker compose --env-file .env exec -T app npm run db:push || true
