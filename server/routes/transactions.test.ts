@@ -49,6 +49,11 @@ vi.mock('@server/lib/auth-middleware.server', () => ({
   }) as MiddlewareHandler,
 }));
 
+// Mock activity logger so it doesn't interfere with db mocks
+vi.mock('@server/lib/activity-logger', () => ({
+  logActivity: vi.fn(),
+}));
+
 describe('Transactions API', () => {
   const mockTransaction = {
     id: 'txn-123',

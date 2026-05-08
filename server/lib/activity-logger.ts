@@ -6,7 +6,7 @@ export const logActivity = (
   userId: string,
   action: string,
   description: string,
-  metadata?: Record<string, any>,
+  metadata?: Record<string, unknown>,
   ipAddress?: string
 ) => {
   // Fire and forget, do not await it so it doesn't block the request

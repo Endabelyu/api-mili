@@ -232,7 +232,7 @@ app.openapi({
     user.id, 
     'UPSERT_BUDGET', 
     `Set budget limit for category ${data.categoryId} to ${data.limitAmount} for month ${data.month}`, 
-    { budgetId: result[0]?.id || existing?.id, categoryId: data.categoryId },
+    { budgetId: result[0]?.id, categoryId: data.categoryId },
     c.req.header('x-forwarded-for')
   );
 

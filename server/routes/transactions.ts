@@ -164,7 +164,7 @@ app.openapi({
       user.id, 
       'CREATE_TRANSACTION', 
       `Created ${data.type} transaction for ${data.amount}`, 
-      { transactionId: result[0]?.id || 'unknown', categoryId: data.categoryId },
+      { categoryId: data.categoryId },
       c.req.header('x-forwarded-for')
     );
     
