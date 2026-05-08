@@ -5,6 +5,7 @@ import * as schema from '@db/schema';
 import { users } from '@db/schema';
 import { eq } from 'drizzle-orm';
 import { MiddlewareHandler } from 'hono';
+import { logActivity } from './activity-logger';
 
 // Derive trusted origins from env — avoids hardcoding production URLs in source.
 // FRONTEND_URL must be set in production (e.g. https://finance-web.endabelyu.com).
@@ -38,6 +39,22 @@ export const auth = betterAuth({
       banned: { type: 'boolean', required: false, defaultValue: false },
     }
   },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          logActivity(user.id, 'USER_REGISTER', `Pengguna baru terdaftar dengan email ${user.email}`);
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session) => {
+          logActivity(session.userId, 'USER_LOGIN', `Pengguna berhasil masuk ke sistem`);
+        },
+      },
+    },
+  },
   baseURL: process.env.NODE_ENV === 'production'
     ? `${process.env.BETTER_AUTH_URL}/api/auth`
     : 'http://localhost:4015/api/auth',
@@ -60,6 +77,7 @@ export const auth = betterAuth({
     },
   },
 });
+
 
 export const requireAuth: MiddlewareHandler = async (c, next) => {
   const session = await auth.api.getSession({
