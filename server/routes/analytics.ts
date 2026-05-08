@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../lib/db';
-import { users } from '@db/schema';
+import { users, activityLogs } from '@db/schema';
 import { requireAuth } from '../lib/auth';
 import { eq, sql, desc } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
@@ -52,6 +52,34 @@ analytics.get('/users', async (c) => {
   const userList = await db.select().from(users).orderBy(desc(users.createdAt));
   
   return c.json(userList);
+});
+
+analytics.get('/activities', async (c) => {
+  const action = c.req.query('action');
+
+  const items = await db
+    .select({
+      id: activityLogs.id,
+      action: activityLogs.action,
+      description: activityLogs.description,
+      metadata: activityLogs.metadata,
+      ipAddress: activityLogs.ipAddress,
+      createdAt: activityLogs.createdAt,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        banned: users.banned,
+      },
+    })
+    .from(activityLogs)
+    .innerJoin(users, eq(activityLogs.userId, users.id))
+    .where(action ? eq(activityLogs.action, action) : undefined)
+    .orderBy(desc(activityLogs.createdAt))
+    .limit(200);
+
+  return c.json({ items });
 });
 
 analytics.put('/users/:id/ban', async (c) => {
