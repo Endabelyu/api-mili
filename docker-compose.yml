@@ -52,5 +52,5 @@ volumes:
   postgres_data:
 
 networks:
-  finance-tracker-network:
+  mili-network:
     name: mili-network

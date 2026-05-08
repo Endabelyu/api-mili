@@ -110,7 +110,7 @@ jobs:
           port: ${{ secrets.VPS_PORT_CONTABO || '22' }}
           script: |
             cd ${{ secrets.VPS_TARGET_DIR }}
-            sudo chown deploy:deploy .env
+            chown deploy:deploy .env 2>/dev/null || true
             # Ensure the DB container is running before deploying app
             docker compose --env-file .env up -d db
             # Wait for Postgres to be ready (up to 30s)
