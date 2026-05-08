@@ -3,6 +3,7 @@ import { eq, and, sql, sum } from 'drizzle-orm';
 import { db } from '@server/lib/db';
 import { budgets, transactions, categories } from '@db/schema';
 import { requireAuth } from '@server/lib/auth-middleware.server';
+import { logActivity } from '@server/lib/activity-logger';
 import { writeLimiter, readLimiter } from '@server/lib/rate-limit';
 
 const app = new OpenAPIHono();
@@ -227,6 +228,14 @@ app.openapi({
     })
     .returning();
 
+  logActivity(
+    user.id, 
+    'UPSERT_BUDGET', 
+    `Set budget limit for category ${data.categoryId} to ${data.limitAmount} for month ${data.month}`, 
+    { budgetId: result[0]?.id || existing?.id, categoryId: data.categoryId },
+    c.req.header('x-forwarded-for')
+  );
+
   return c.json({
     ...result[0],
     updated: false,
@@ -286,6 +295,14 @@ app.openapi({
     .where(eq(budgets.id, id))
     .returning();
 
+  logActivity(
+    user.id, 
+    'UPDATE_BUDGET', 
+    `Updated budget limit to ${limitAmount}`, 
+    { budgetId: id },
+    c.req.header('x-forwarded-for')
+  );
+
   return c.json(result[0]);
 });
 
@@ -320,6 +337,14 @@ app.openapi({
 
   // Delete budget
   await db.delete(budgets).where(eq(budgets.id, id));
+
+  logActivity(
+    user.id, 
+    'DELETE_BUDGET', 
+    `Deleted budget limit`, 
+    { budgetId: id },
+    c.req.header('x-forwarded-for')
+  );
 
   return c.json({ success: true });
 });

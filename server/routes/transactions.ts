@@ -2,6 +2,7 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { requireAuth } from '@server/lib/auth-middleware.server';
 import { writeLimiter, readLimiter } from '@server/lib/rate-limit';
 import * as transactionService from '@server/lib/services/transactions.server';
+import { logActivity } from '@server/lib/activity-logger';
 import { HTTPException } from 'hono/http-exception';
 
 const app = new OpenAPIHono();
@@ -158,6 +159,15 @@ app.openapi({
       ...data,
       userId: user.id,
     });
+    
+    logActivity(
+      user.id, 
+      'CREATE_TRANSACTION', 
+      `Created ${data.type} transaction for ${data.amount}`, 
+      { transactionId: result[0]?.id || 'unknown', categoryId: data.categoryId },
+      c.req.header('x-forwarded-for')
+    );
+    
     return c.json(result, 201);
   } catch (err) {
     const error = err as Error;
@@ -207,6 +217,15 @@ app.openapi({
 
   try {
     const result = await transactionService.updateTransaction(id, user.id, data);
+    
+    logActivity(
+      user.id, 
+      'UPDATE_TRANSACTION', 
+      `Updated transaction ${id}`, 
+      { transactionId: id, updates: data },
+      c.req.header('x-forwarded-for')
+    );
+    
     return c.json(result);
   } catch (err) {
     const error = err as { status?: number; message: string };
@@ -237,6 +256,15 @@ app.openapi({
 
   try {
     const result = await transactionService.deleteTransaction(id, user.id);
+    
+    logActivity(
+      user.id, 
+      'DELETE_TRANSACTION', 
+      `Deleted transaction ${id}`, 
+      { transactionId: id },
+      c.req.header('x-forwarded-for')
+    );
+    
     return c.json(result);
   } catch (err) {
     const error = err as { status?: number; message: string };

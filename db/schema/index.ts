@@ -10,4 +10,4 @@ export * from './scheduled_transactions';
 export * from './rate-limits';
 export * from './notifications';
 export * from './feedbacks';
-
+export * from './activity-logs';

@@ -77,7 +77,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy source to VPS
+      - name: Clean old source on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST_CONTABO }}
+          username: ${{ secrets.VPS_USERNAME_CONTABO }}
+          key: ${{ secrets.VPS_SSHKEY_CONTABO }}
+          port: ${{ secrets.VPS_PORT_CONTABO || '22' }}
+          script: |
+            cd ${{ secrets.VPS_TARGET_DIR }}
+            # Remove stale source directories so SCP writes a clean copy
+            rm -rf server/ db/
+
+      - name: Copy fresh source to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST_CONTABO }}
@@ -87,6 +99,7 @@ jobs:
           source: "server/,db/,package.json,package-lock.json,docker-compose.yml,Dockerfile,tsconfig.json,.dockerignore,deploy.sh"
           target: ${{ secrets.VPS_TARGET_DIR }}/
           overwrite: true
+
 
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
@@ -111,3 +124,13 @@ jobs:
             sleep 5
             docker compose --env-file .env exec -T app npm run db:push || true
             docker image prune -f
+            # Verify new routes are reachable
+            sleep 3
+            echo "=== POST-DEPLOY VERIFICATION ==="
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4015/docs)
+            echo "/docs status: $HTTP_CODE"
+            if [ "$HTTP_CODE" = "404" ]; then
+              echo "ERROR: /docs still returns 404 — deploy may have failed!"
+              exit 1
+            fi
+            echo "Deploy verified successfully."

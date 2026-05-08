@@ -3,6 +3,7 @@ import { requireAuth } from '@server/lib/auth-middleware.server';
 import { db } from '@server/lib/db';
 import { feedbacks, users } from '@db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { logActivity } from '@server/lib/activity-logger';
 import { HTTPException } from 'hono/http-exception';
 
 const app = new OpenAPIHono();
@@ -49,6 +50,14 @@ app.openapi({
     message: data.message,
     rating: data.rating,
   }).returning();
+
+  logActivity(
+    user.id, 
+    'SUBMIT_FEEDBACK', 
+    `Submitted feedback with rating ${data.rating}`, 
+    { feedbackId: feedback.id, rating: data.rating },
+    c.req.header('x-forwarded-for')
+  );
 
   return c.json(feedback, 201);
 });
