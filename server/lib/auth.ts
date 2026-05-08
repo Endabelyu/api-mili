@@ -35,6 +35,7 @@ export const auth = betterAuth({
     additionalFields: {
       role: { type: 'string', required: false, defaultValue: 'user' },
       lastSeenAt: { type: 'date', required: false },
+      banned: { type: 'boolean', required: false, defaultValue: false },
     }
   },
   baseURL: process.env.NODE_ENV === 'production'

@@ -13,6 +13,12 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
     return c.json({ error: 'Unauthorized' }, 401);
   }
 
+  // Cast user with banned property
+  const user = session.user as { banned?: boolean };
+  if (user.banned === true) {
+    return c.json({ error: 'Your account has been banned. Please contact support.' }, 403);
+  }
+
   c.set('user', session.user);
   await next();
 };

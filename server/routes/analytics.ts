@@ -54,4 +54,41 @@ analytics.get('/users', async (c) => {
   return c.json(userList);
 });
 
+analytics.put('/users/:id/ban', async (c) => {
+  const id = c.req.param('id');
+  
+  const [user] = await db.select().from(users).where(eq(users.id, id));
+  if (!user) {
+    throw new HTTPException(404, { message: 'User not found' });
+  }
+
+  if (user.role === 'developer') {
+    throw new HTTPException(400, { message: 'Cannot ban a developer' });
+  }
+
+  const newBannedState = !user.banned;
+  await db.update(users)
+    .set({ banned: newBannedState, updatedAt: new Date() })
+    .where(eq(users.id, id));
+
+  return c.json({ success: true, banned: newBannedState });
+});
+
+analytics.delete('/users/:id', async (c) => {
+  const id = c.req.param('id');
+  
+  const [user] = await db.select().from(users).where(eq(users.id, id));
+  if (!user) {
+    throw new HTTPException(404, { message: 'User not found' });
+  }
+
+  if (user.role === 'developer') {
+    throw new HTTPException(400, { message: 'Cannot delete a developer' });
+  }
+
+  await db.delete(users).where(eq(users.id, id));
+
+  return c.json({ success: true });
+});
+
 export default analytics;
