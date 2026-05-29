@@ -6,12 +6,12 @@ import { accounts } from './accounts';
 
 export const transactions = pgTable('transactions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: text('user_id').notNull().references(() => users.id),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   type: varchar('type', { length: 10 }).notNull(), // 'income' | 'expense'
   amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
-  accountId: uuid('account_id').references(() => accounts.id),
-  toAccountId: uuid('to_account_id').references(() => accounts.id), // For transfers
-  categoryId: varchar('category_id').notNull().references(() => categories.id),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+  toAccountId: uuid('to_account_id').references(() => accounts.id, { onDelete: 'set null' }), // For transfers
+  categoryId: varchar('category_id').notNull().references(() => categories.id, { onDelete: 'restrict' }),
   description: text('description'),
   date: timestamp('date', { mode: 'date' }).notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
@@ -20,6 +20,8 @@ export const transactions = pgTable('transactions', {
   index('idx_transactions_user_date').on(table.userId, table.date),
   index('idx_transactions_user_type').on(table.userId, table.type),
   index('idx_transactions_category').on(table.userId, table.categoryId),
+  index('idx_transactions_account').on(table.accountId),
+  index('idx_transactions_to_account').on(table.toAccountId),
 ]);
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({

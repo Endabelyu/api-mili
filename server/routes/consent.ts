@@ -3,8 +3,11 @@ import { db } from '../lib/db';
 import { userConsents } from '@db/schema';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { createRateLimiter } from '../lib/rate-limit';
 
 const consentApp = new Hono();
+
+consentApp.use('*', createRateLimiter(5, 60_000));
 
 const consentSchema = z.object({
   consentVersion: z.string().min(1),

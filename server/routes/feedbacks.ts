@@ -81,10 +81,9 @@ app.openapi({
   },
   tags: API_TAGS
 }, async (c) => {
-  const user = c.get('user') as { id: string, email?: string };
-  
-  // Developer access restriction
-  if (user.email !== 'endabelyuproject@gmail.com') {
+  const user = c.get('user') as { id: string, role?: string };
+
+  if (user.role !== 'developer') {
     throw new HTTPException(403, { message: 'Forbidden' });
   }
 

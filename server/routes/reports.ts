@@ -177,7 +177,7 @@ app.openapi({
 }, async (c) => {
   const user = c.get('user') as { id: string };
   const query = c.req.valid('query');
-  const months = Number(query.months || '6');
+  const months = Math.min(Math.max(Number(query.months || '6'), 1), 24);
 
   // Generate last N months
   const monthsList: string[] = [];
@@ -206,22 +206,18 @@ app.openapi({
     .groupBy(sql`to_char(${transactions.date}, 'YYYY-MM')`, transactions.type)
     .orderBy(sql`to_char(${transactions.date}, 'YYYY-MM')`);
 
-  // Build result for all months (including empty ones)
-  const result = monthsList.map((month) => {
-    const monthData = monthlyData.filter((m) => m.month === month);
-    const income = parseFloat(
-      monthData.find((m) => m.type === 'income')?.amount ?? '0'
-    );
-    const expenses = parseFloat(
-      monthData.find((m) => m.type === 'expense')?.amount ?? '0'
-    );
+  // Build O(1) lookup map then iterate months once
+  const monthMap = new Map<string, { income: number; expenses: number }>();
+  for (const row of monthlyData) {
+    if (!monthMap.has(row.month)) monthMap.set(row.month, { income: 0, expenses: 0 });
+    const entry = monthMap.get(row.month)!;
+    if (row.type === 'income') entry.income = parseFloat(row.amount ?? '0');
+    else if (row.type === 'expense') entry.expenses = parseFloat(row.amount ?? '0');
+  }
 
-    return {
-      month,
-      income,
-      expenses,
-      balance: income - expenses,
-    };
+  const result = monthsList.map((month) => {
+    const { income = 0, expenses = 0 } = monthMap.get(month) ?? {};
+    return { month, income, expenses, balance: income - expenses };
   });
 
   return c.json({ items: result });

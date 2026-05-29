@@ -9,32 +9,36 @@ export async function listBudgetsWithSpending(userId: string, month: string) {
   });
 
   const startDate = `${month}-01`;
-  const endDate = `${month}-31`;
+  const [year, monthNum] = month.split('-').map(Number);
+  const endDate = new Date(year, monthNum, 1).toISOString().slice(0, 10);
 
-  const budgetsWithSpending = await Promise.all(
-    userBudgets.map(async (budget) => {
-      const spentResult = await db
-        .select({ total: sum(transactions.amount) })
-        .from(transactions)
-        .where(and(
-          eq(transactions.userId, userId),
-          eq(transactions.categoryId, budget.categoryId),
-          eq(transactions.type, 'expense'),
-          sql`${transactions.date} >= ${startDate} AND ${transactions.date} <= ${endDate}`
-        ));
-
-      const spent = spentResult[0]?.total ?? '0';
-      const limitAmount = parseFloat(budget.limitAmount);
-      const spentAmount = parseFloat(spent);
-
-      return {
-        ...budget,
-        spent: spentAmount.toFixed(2),
-        remaining: (limitAmount - spentAmount).toFixed(2),
-        percentageUsed: limitAmount > 0 ? Math.round((spentAmount / limitAmount) * 100) : 0,
-      };
+  const spendingByCategory = await db
+    .select({
+      categoryId: transactions.categoryId,
+      total: sum(transactions.amount),
     })
-  );
+    .from(transactions)
+    .where(and(
+      eq(transactions.userId, userId),
+      eq(transactions.type, 'expense'),
+      sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`
+    ))
+    .groupBy(transactions.categoryId);
+
+  const spendingMap = new Map(spendingByCategory.map(s => [s.categoryId, s.total ?? '0']));
+
+  const budgetsWithSpending = userBudgets.map((budget) => {
+    const spent = spendingMap.get(budget.categoryId) ?? '0';
+    const limitAmount = parseFloat(budget.limitAmount);
+    const spentAmount = parseFloat(spent);
+
+    return {
+      ...budget,
+      spent: spentAmount.toFixed(2),
+      remaining: (limitAmount - spentAmount).toFixed(2),
+      percentageUsed: limitAmount > 0 ? Math.round((spentAmount / limitAmount) * 100) : 0,
+    };
+  });
 
   return budgetsWithSpending;
 }

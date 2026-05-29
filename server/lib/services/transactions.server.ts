@@ -1,6 +1,6 @@
-import { eq, and, or, like, desc, sql, SQL } from 'drizzle-orm';
+import { eq, and, or, ilike, desc, sql, SQL } from 'drizzle-orm';
 import { db } from '@server/lib/db';
-import { transactions, categories } from '@db/schema';
+import { transactions, categories, accounts } from '@db/schema';
 import { processTransactionBalance } from './accounts.server';
 
 export interface ListTransactionsOptions {
@@ -49,7 +49,8 @@ export async function listTransactions(options: ListTransactionsOptions) {
   }
 
   if (search) {
-    conditions.push(like(transactions.description, `%${search}%`));
+    const escaped = search.replace(/[%_\\]/g, '\\$&');
+    conditions.push(ilike(transactions.description, `%${escaped}%`));
   }
 
   const items = await db.query.transactions.findMany({
@@ -69,7 +70,7 @@ export async function listTransactions(options: ListTransactionsOptions) {
     .from(transactions)
     .where(and(...conditions));
 
-  const total = countResult[0]?.count ?? 0;
+  const total = Number(countResult[0]?.count ?? 0);
 
   return {
     items,
@@ -111,6 +112,20 @@ export async function createTransaction(input: CreateTransactionInput) {
 
   if (!category) {
     throw new Error('Category not found');
+  }
+
+  if (input.accountId) {
+    const acct = await db.query.accounts.findFirst({ where: eq(accounts.id, input.accountId) });
+    if (!acct || acct.userId !== input.userId) {
+      throw Object.assign(new Error('Account not found'), { status: 404 });
+    }
+  }
+
+  if (input.toAccountId) {
+    const acct = await db.query.accounts.findFirst({ where: eq(accounts.id, input.toAccountId) });
+    if (!acct || acct.userId !== input.userId) {
+      throw Object.assign(new Error('Destination account not found'), { status: 404 });
+    }
   }
 
   return await db.transaction(async (tx) => {

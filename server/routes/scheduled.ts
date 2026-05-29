@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { db } from '../lib/db';
-import { scheduledTransactions } from '../../db/schema';
+import { scheduledTransactions, accounts } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
@@ -17,12 +17,23 @@ function calculateNextRunDate(current: Date, frequency: string): Date {
     case 'weekly':
       next.setDate(next.getDate() + 7);
       break;
-    case 'monthly':
+    case 'monthly': {
+      const originalDay = current.getDate();
+      next.setDate(1);
       next.setMonth(next.getMonth() + 1);
+      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(originalDay, daysInMonth));
       break;
-    case 'yearly':
+    }
+    case 'yearly': {
+      const originalDay = current.getDate();
+      const originalMonth = current.getMonth();
       next.setFullYear(next.getFullYear() + 1);
+      const daysInMonth = new Date(next.getFullYear(), originalMonth + 1, 0).getDate();
+      next.setMonth(originalMonth);
+      next.setDate(Math.min(originalDay, daysInMonth));
       break;
+    }
   }
   return next;
 }
@@ -96,9 +107,18 @@ app.put('/:id', zValidator('json', updateScheduledSchema), async (c) => {
 
   if (!existing) throw new HTTPException(404, { message: 'Scheduled transaction not found' });
 
+  if (data.accountId) {
+    const acct = await db.query.accounts.findFirst({ where: eq(accounts.id, data.accountId) });
+    if (!acct || acct.userId !== user.id) throw new HTTPException(400, { message: 'Invalid account' });
+  }
+  if (data.toAccountId) {
+    const acct = await db.query.accounts.findFirst({ where: eq(accounts.id, data.toAccountId) });
+    if (!acct || acct.userId !== user.id) throw new HTTPException(400, { message: 'Invalid destination account' });
+  }
+
   const { nextRunDate, ...restData } = data;
-  const updateData = { 
-    ...restData, 
+  const updateData = {
+    ...restData,
     updatedAt: new Date(),
     ...(nextRunDate !== undefined && {
       nextRunDate: new Date(nextRunDate)

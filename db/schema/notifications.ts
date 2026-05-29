@@ -1,10 +1,10 @@
-import { pgTable, uuid, text, boolean, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, boolean, timestamp, varchar, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users';
 
 export const notifications = pgTable('notifications', {
   id: uuid('id').primaryKey().defaultRandom(),
-  userId: text('user_id').notNull().references(() => users.id),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   amount: text('amount'),
   time: varchar('time', { length: 50 }), // fallback for relative text
@@ -13,7 +13,10 @@ export const notifications = pgTable('notifications', {
   iconColor: varchar('iconColor', { length: 30 }).default('text-orange-500'),
   unread: boolean('unread').default(true).notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
-});
+}, (table) => [
+  index('idx_notifications_user').on(table.userId),
+  index('idx_notifications_user_unread').on(table.userId, table.unread),
+]);
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),

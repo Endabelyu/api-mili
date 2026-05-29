@@ -23,7 +23,7 @@ const listQuerySchema = z.object({
   account: z.string().optional(),
   search: z.string().max(100).trim().optional(),
   page: z.string().optional().default('1'),
-  limit: z.string().optional().default('20'),
+  limit: z.string().optional().default('20').transform(Number).refine(n => n >= 1 && n <= 200, 'Limit must be 1–200').transform(String),
 });
 
 app.openapi({
@@ -105,10 +105,10 @@ app.openapi({
 // Create transaction schema
 const createSchema = z.object({
   type: z.enum(['income', 'expense', 'transfer']),
-  amount: z.union([z.string(), z.number()]).transform((v) => {
-    const num = typeof v === 'string' ? parseFloat(v) : v;
-    return num.toFixed(2);
-  }),
+  amount: z.union([z.string(), z.number()])
+    .transform((v) => (typeof v === 'string' ? parseFloat(v) : v))
+    .refine((n) => n > 0 && isFinite(n), 'Amount must be a positive number')
+    .transform((n) => n.toFixed(2)),
   categoryId: z.string(),
   accountId: z.string().optional(),
   toAccountId: z.string().optional(),

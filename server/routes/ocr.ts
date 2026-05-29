@@ -2,6 +2,9 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { requireAuth } from '@server/lib/auth-middleware.server';
 import { writeLimiter } from '@server/lib/rate-limit';
 import { logger } from '@server/lib/logger';
+import { db } from '@server/lib/db';
+import { rateLimits } from '@db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 const app = new OpenAPIHono();
 const API_TAGS = ['OCR'];
@@ -10,23 +13,22 @@ const API_TAGS = ['OCR'];
 app.use('*', requireAuth);
 app.use('POST /*', writeLimiter);
 
-// ─── In-memory daily scan quota (resets on server restart) ────────────────────
-// Production: replace with Redis or DB counter.
-const scanCounts = new Map<string, { count: number; date: string }>();
-
-function checkQuota(userId: string): boolean {
+async function checkQuota(userId: string): Promise<boolean> {
   const today = new Date().toISOString().slice(0, 10);
   const limit = parseInt(process.env.OCR_DAILY_LIMIT || '10', 10);
-  const entry = scanCounts.get(userId);
+  const key = `ocr:${userId}:${today}`;
+  const midnight = new Date(`${today}T23:59:59Z`);
 
-  if (!entry || entry.date !== today) {
-    scanCounts.set(userId, { count: 1, date: today });
-    return true;
-  }
+  const result = await db
+    .insert(rateLimits)
+    .values({ key, totalHits: 1, expiresAt: midnight })
+    .onConflictDoUpdate({
+      target: rateLimits.key,
+      set: { totalHits: sql`${rateLimits.totalHits} + 1` },
+    })
+    .returning({ totalHits: rateLimits.totalHits });
 
-  if (entry.count >= limit) return false;
-  entry.count++;
-  return true;
+  return result[0].totalHits <= limit;
 }
 
 // ─── Claude Vision System Prompt ─────────────────────────────────────────────
@@ -96,7 +98,7 @@ app.openapi(
     }
 
     // Quota check
-    if (!checkQuota(user.id)) {
+    if (!await checkQuota(user.id)) {
       return c.json({ error: 'Batas scan harian tercapai. Coba lagi besok.' }, 429);
     }
 

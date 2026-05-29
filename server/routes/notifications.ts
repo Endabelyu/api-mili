@@ -3,7 +3,7 @@ import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
 import { db } from '../lib/db';
 import { notifications, budgets, transactions, targets, scheduledTransactions } from '../../db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 
 const app = new OpenAPIHono();
 const API_TAGS = ['Notifications'];
@@ -90,6 +90,16 @@ app.openapi({
 
   const spendingMap = new Map(spendingByCategory.map((s) => [s.categoryId, s.total]));
 
+  // Pre-fetch all existing notification titles to avoid N+1
+  const existingNotifs = await db
+    .select({ title: notifications.title, amount: notifications.amount })
+    .from(notifications)
+    .where(eq(notifications.userId, user.id));
+  const existingTitles = new Set(existingNotifs.map(n => n.title));
+  const existingTitleAmount = new Set(existingNotifs.map(n => `${n.title}||${n.amount}`));
+
+  const toInsert: (typeof notifications.$inferInsert)[] = [];
+
   for (const b of userBudgets) {
     const spent = parseFloat(spendingMap.get(b.categoryId) ?? '0');
     const limit = parseFloat(b.limitAmount);
@@ -97,11 +107,8 @@ app.openapi({
 
     if (percentage >= 80) {
       const title = `Anggaran ${b.category?.label || 'Kategori'} hampir habis (${Math.round(percentage)}%)`;
-      const existing = await db.query.notifications.findFirst({
-        where: and(eq(notifications.userId, user.id), eq(notifications.title, title)),
-      });
-      if (!existing) {
-        await db.insert(notifications).values({
+      if (!existingTitles.has(title)) {
+        toInsert.push({
           userId: user.id,
           title,
           amount: `Sisa Rp ${(limit - spent).toLocaleString('id-ID')} dari Rp ${limit.toLocaleString('id-ID')}`,
@@ -127,11 +134,8 @@ app.openapi({
 
     if (targetPct >= 100) {
       const title = `Target ${t.name} Berhasil Dicapai! 🎉`;
-      const existing = await db.query.notifications.findFirst({
-        where: and(eq(notifications.userId, user.id), eq(notifications.title, title)),
-      });
-      if (!existing) {
-        await db.insert(notifications).values({
+      if (!existingTitles.has(title)) {
+        toInsert.push({
           userId: user.id,
           title,
           amount: `Lengkap Rp ${targetAmt.toLocaleString('id-ID')}`,
@@ -158,14 +162,12 @@ app.openapi({
 
     if (diffDays <= 3 && diffDays >= 0) {
       const title = `Transaksi Terjadwal Segera Jatuh Tempo`;
-      const existing = await db.query.notifications.findFirst({
-        where: and(eq(notifications.userId, user.id), eq(notifications.title, title), eq(notifications.amount, s.description || 'Tagihan')),
-      });
-      if (!existing) {
-        await db.insert(notifications).values({
+      const amount = s.description || 'Tagihan Pembayaran Terjadwal';
+      if (!existingTitleAmount.has(`${title}||${amount}`)) {
+        toInsert.push({
           userId: user.id,
           title,
-          amount: s.description || 'Tagihan Pembayaran Terjadwal',
+          amount,
           time: `${diffDays === 0 ? 'HARI INI' : diffDays + ' HARI LAGI'}`,
           icon: 'Zap',
           color: 'bg-orange-50',
@@ -176,10 +178,15 @@ app.openapi({
     }
   }
 
+  if (toInsert.length > 0) {
+    await db.insert(notifications).values(toInsert);
+  }
+
   // Fetch final list
   const finalItems = await db.query.notifications.findMany({
     where: eq(notifications.userId, user.id),
     orderBy: (notifications, { desc }) => [desc(notifications.createdAt)],
+    limit: 100,
   });
 
   return c.json({ items: finalItems }, 200);

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../lib/db';
 import { users, activityLogs } from '@db/schema';
-import { requireAuth } from '../lib/auth';
+import { requireAuth } from '../lib/auth-middleware.server';
 import { eq, sql, desc } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
@@ -21,17 +21,15 @@ const requireDeveloper = async (c: Context, next: Next) => {
 analytics.use('*', requireAuth, requireDeveloper);
 
 analytics.get('/summary', async (c) => {
-  const allUsers = await db.select().from(users);
-  
-  const totalUsers = allUsers.length;
-  
-  // New users this month
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const newUsersThisMonth = allUsers.filter(u => u.createdAt && u.createdAt >= startOfMonth).length;
-  
-  // Growth per month (last 6 months)
-  // Note: pg to_char is specific to Postgres
+
+  const [{ totalUsers }] = await db.select({ totalUsers: sql<number>`count(*)` }).from(users);
+  const [{ newUsersThisMonth }] = await db
+    .select({ newUsersThisMonth: sql<number>`count(*)` })
+    .from(users)
+    .where(sql`${users.createdAt} >= ${startOfMonth}`);
+
   const growth = await db.select({
     month: sql<string>`to_char(${users.createdAt}, 'YYYY-MM')`,
     count: sql<number>`count(*)`
@@ -42,15 +40,18 @@ analytics.get('/summary', async (c) => {
   .limit(6);
 
   return c.json({
-    totalUsers,
-    newUsersThisMonth,
+    totalUsers: Number(totalUsers),
+    newUsersThisMonth: Number(newUsersThisMonth),
     growth: growth.reverse()
   });
 });
 
 analytics.get('/users', async (c) => {
-  const userList = await db.select().from(users).orderBy(desc(users.createdAt));
-  
+  const page = Math.max(1, Number(c.req.query('page') || '1'));
+  const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || '100')));
+  const offset = (page - 1) * limit;
+
+  const userList = await db.select().from(users).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
   return c.json(userList);
 });
 

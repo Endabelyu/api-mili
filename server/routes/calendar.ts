@@ -15,10 +15,12 @@ app.get('/', async (c) => {
   if (!user) throw new HTTPException(401, { message: 'Unauthorized' });
 
   const monthParam = c.req.query('month'); // format: YYYY-MM
-  if (!monthParam) throw new HTTPException(400, { message: 'Month parameter is required (YYYY-MM)' });
+  if (!monthParam || !/^\d{4}-\d{2}$/.test(monthParam))
+    throw new HTTPException(400, { message: 'Month parameter is required (YYYY-MM)' });
 
   // Calculate start and end dates
   const startDate = new Date(`${monthParam}-01T00:00:00Z`);
+  if (isNaN(startDate.getTime())) throw new HTTPException(400, { message: 'Invalid month' });
   const endDate = new Date(startDate);
   endDate.setMonth(endDate.getMonth() + 1);
 
@@ -34,6 +36,7 @@ app.get('/', async (c) => {
       account: true,
     },
     orderBy: (transactions, { desc }) => [desc(transactions.date)],
+    limit: 2000,
   });
 
   // Group by date

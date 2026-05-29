@@ -2,6 +2,7 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { db } from '@server/lib/db';
 import { categories } from '@db/schema';
 import { asc } from 'drizzle-orm';
+import { requireAuth } from '@server/lib/auth-middleware.server';
 
 const app = new OpenAPIHono();
 const API_TAGS = ['Categories'];
@@ -43,6 +44,11 @@ const createCategorySchema = z.object({
   color: z.string(),
   icon: z.string().optional(),
   type: z.enum(['income', 'expense', 'both'])
+});
+
+app.use('/', async (c, next) => {
+  if (c.req.method !== 'GET') return requireAuth(c, next);
+  return next();
 });
 
 app.openapi({
