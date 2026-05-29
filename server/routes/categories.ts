@@ -3,6 +3,7 @@ import { db } from '@server/lib/db';
 import { categories } from '@db/schema';
 import { asc } from 'drizzle-orm';
 import { requireAuth } from '@server/lib/auth-middleware.server';
+import { createRateLimiter } from '@server/lib/rate-limit';
 
 const app = new OpenAPIHono();
 const API_TAGS = ['Categories'];
@@ -40,14 +41,19 @@ app.openapi({
 });
 
 const createCategorySchema = z.object({
-  label: z.string(),
-  color: z.string(),
-  icon: z.string().optional(),
+  label: z.string().min(1).max(100),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+  icon: z.string().max(10).optional(),
   type: z.enum(['income', 'expense', 'both'])
 });
 
-app.use('/', async (c, next) => {
-  if (c.req.method !== 'GET') return requireAuth(c, next);
+const categoryWriteLimiter = createRateLimiter(20, 60_000); // 20/min
+
+app.use('*', async (c, next) => {
+  if (c.req.method !== 'GET') {
+    await requireAuth(c, next);
+    return;
+  }
   return next();
 });
 
@@ -92,9 +98,13 @@ app.openapi({
   },
   tags: API_TAGS
 }, async (c) => {
+  await categoryWriteLimiter(c, async () => {});
+
   const { label, color, icon, type } = c.req.valid('json');
 
-  const id = label.toLowerCase().replace(/\s+/g, '-');
+  // UUID-based ID to avoid collisions from label-based ID
+  const { randomUUID } = await import('crypto');
+  const id = `${label.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 40)}-${randomUUID().slice(0, 8)}`;
 
   const newItem = await db.insert(categories).values({
     id,

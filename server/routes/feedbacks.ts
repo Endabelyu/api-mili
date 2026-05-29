@@ -5,12 +5,15 @@ import { feedbacks, users } from '@db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { logActivity } from '@server/lib/activity-logger';
 import { HTTPException } from 'hono/http-exception';
+import { createRateLimiter } from '@server/lib/rate-limit';
 
 const app = new OpenAPIHono();
 const API_TAGS = ['Feedbacks'];
+const feedbackLimiter = createRateLimiter(5, 60_000); // 5/min per IP
 
-// Apply auth middleware to all routes
+// Apply auth middleware and rate limit to all routes
 app.use('*', requireAuth);
+app.use('*', feedbackLimiter);
 
 const createSchema = z.object({
   message: z.string().min(1).max(2000),

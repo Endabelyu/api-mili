@@ -104,6 +104,14 @@ app.openapi(
 
     const { image } = c.req.valid('json');
 
+    // Detect media type from base64 data URI prefix
+    const mediaTypeMatch = image.match(/^data:(image\/[a-z+]+);base64,/);
+    const detectedMediaType = mediaTypeMatch?.[1] ?? 'image/jpeg';
+    const allowedMediaTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const mediaType = allowedMediaTypes.includes(detectedMediaType) ? detectedMediaType : 'image/jpeg';
+    // Strip data URI prefix if present
+    const imageData = image.includes(',') ? image.split(',')[1] : image;
+
     try {
       logger.info('[OCR] Scanning receipt', { userId: user.id });
 
@@ -115,7 +123,7 @@ app.openapi(
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-haiku-3-5-20241022',
           max_tokens: 1024,
           system: SYSTEM_PROMPT,
           messages: [
@@ -126,8 +134,8 @@ app.openapi(
                   type: 'image',
                   source: {
                     type: 'base64',
-                    media_type: 'image/jpeg',
-                    data: image,
+                    media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                    data: imageData,
                   },
                 },
                 {

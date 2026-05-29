@@ -187,13 +187,13 @@ export async function updateTransaction(id: string, userId: string, input: Updat
     }
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
-    if (input.type) updateData.type = input.type;
-    if (input.amount) updateData.amount = input.amount;
-    if (input.categoryId) updateData.categoryId = input.categoryId;
-    if (input.accountId) updateData.accountId = input.accountId;
-    if (input.toAccountId !== undefined) updateData.toAccountId = input.toAccountId;
+    if (input.type !== undefined) updateData.type = input.type;
+    if (input.amount !== undefined) updateData.amount = input.amount;
+    if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
+    if (input.accountId !== undefined) updateData.accountId = input.accountId ?? null;
+    if (input.toAccountId !== undefined) updateData.toAccountId = input.toAccountId ?? null;
     if (input.description !== undefined) updateData.description = input.description;
-    if (input.date) updateData.date = new Date(input.date);
+    if (input.date !== undefined) updateData.date = new Date(input.date);
 
     const [result] = await tx
       .update(transactions)
