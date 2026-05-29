@@ -1,7 +1,7 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { db } from '../lib/db';
-import { targets, transactions } from '../../db/schema';
-import { eq, and, sum, inArray } from 'drizzle-orm';
+import { targets, accounts } from '../../db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
 
@@ -18,26 +18,11 @@ const createTargetSchema = z.object({
   color: z.string().length(7).optional().default('#15803D'),
   icon: z.string().optional().default('🎯'),
   status: z.enum(['active', 'completed', 'paused']).optional().default('active'),
-  categoryId: z.string().optional().nullable(),
+  accountId: z.string().uuid().optional().nullable(),
+  pinned: z.boolean().optional().default(false),
 });
 
 const updateTargetSchema = createTargetSchema.partial();
-
-async function batchComputeAmounts(userId: string, categoryIds: string[]): Promise<Map<string, string>> {
-  if (categoryIds.length === 0) return new Map();
-
-  const rows = await db
-    .select({ categoryId: transactions.categoryId, total: sum(transactions.amount) })
-    .from(transactions)
-    .where(and(
-      eq(transactions.userId, userId),
-      eq(transactions.type, 'income'),
-      inArray(transactions.categoryId, categoryIds),
-    ))
-    .groupBy(transactions.categoryId);
-
-  return new Map(rows.map(r => [r.categoryId!, r.total ?? '0']));
-}
 
 const targetResponseSchema = z.object({
   id: z.string(),
@@ -49,8 +34,22 @@ const targetResponseSchema = z.object({
   color: z.string(),
   icon: z.string(),
   status: z.string(),
-  categoryId: z.string().nullable().optional(),
+  pinned: z.boolean().optional(),
+  accountId: z.string().nullable().optional(),
+  accountName: z.string().nullable().optional(),
 });
+
+// Batch fetch account balances for linked targets
+async function batchAccountBalances(userId: string, accountIds: string[]): Promise<Map<string, string>> {
+  if (accountIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({ id: accounts.id, balance: accounts.balance })
+    .from(accounts)
+    .where(and(eq(accounts.userId, userId), inArray(accounts.id, accountIds)));
+
+  return new Map(rows.map(r => [r.id, String(r.balance)]));
+}
 
 app.openapi({
   method: 'get',
@@ -73,14 +72,17 @@ app.openapi({
   const result = await db.query.targets.findMany({
     where: eq(targets.userId, user.id),
     orderBy: (targets, { desc }) => [desc(targets.createdAt)],
+    with: { account: true },
   });
 
-  const linkedCategoryIds = result.filter(t => t.categoryId).map(t => t.categoryId!);
-  const amountMap = await batchComputeAmounts(user.id, linkedCategoryIds);
+  const linkedAccountIds = result.filter(t => t.accountId).map(t => t.accountId!);
+  const balanceMap = await batchAccountBalances(user.id, linkedAccountIds);
 
-  const items = result.map(t =>
-    t.categoryId ? { ...t, currentAmount: amountMap.get(t.categoryId) ?? t.currentAmount } : t
-  );
+  const items = result.map(t => ({
+    ...t,
+    currentAmount: t.accountId ? (balanceMap.get(t.accountId) ?? t.currentAmount) : t.currentAmount,
+    accountName: (t as typeof t & { account?: { name: string } | null }).account?.name ?? null,
+  }));
 
   return c.json({ items }, 200);
 });
@@ -114,18 +116,27 @@ app.openapi({
   const data = c.req.valid('json');
   const deadlineDate = data.deadline ? new Date(data.deadline) : null;
 
+  // Validate account ownership if accountId provided
+  if (data.accountId) {
+    const account = await db.query.accounts.findFirst({
+      where: and(eq(accounts.id, data.accountId), eq(accounts.userId, user.id)),
+    });
+    if (!account) throw new HTTPException(403, { message: 'Account not found or not owned by user' });
+  }
+
   const [newTarget] = await db.insert(targets)
     .values({
       ...data,
       userId: user.id,
       deadline: deadlineDate,
-      categoryId: data.categoryId ?? null,
+      accountId: data.accountId ?? null,
+      pinned: data.pinned ?? false,
     })
     .returning();
 
-  if (newTarget.categoryId) {
-    const amountMap = await batchComputeAmounts(user.id, [newTarget.categoryId]);
-    return c.json({ ...newTarget, currentAmount: amountMap.get(newTarget.categoryId) ?? newTarget.currentAmount }, 201);
+  if (newTarget.accountId) {
+    const balanceMap = await batchAccountBalances(user.id, [newTarget.accountId]);
+    return c.json({ ...newTarget, currentAmount: balanceMap.get(newTarget.accountId) ?? newTarget.currentAmount }, 201);
   }
 
   return c.json(newTarget, 201);
@@ -164,15 +175,23 @@ app.openapi({
   const existing = await db.query.targets.findFirst({
     where: and(eq(targets.id, id), eq(targets.userId, user.id)),
   });
-
   if (!existing) throw new HTTPException(404, { message: 'Target not found' });
 
-  const { deadline, categoryId, ...restData } = data;
+  // Validate account ownership if accountId provided
+  if (data.accountId) {
+    const account = await db.query.accounts.findFirst({
+      where: and(eq(accounts.id, data.accountId), eq(accounts.userId, user.id)),
+    });
+    if (!account) throw new HTTPException(403, { message: 'Account not found or not owned by user' });
+  }
+
+  const { deadline, accountId, pinned, ...restData } = data;
   const updateData = {
     ...restData,
     updatedAt: new Date(),
     ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
-    ...(categoryId !== undefined && { categoryId: categoryId ?? null }),
+    ...(accountId !== undefined && { accountId: accountId ?? null }),
+    ...(pinned !== undefined && { pinned }),
   };
 
   const [updatedTarget] = await db.update(targets)
@@ -180,9 +199,9 @@ app.openapi({
     .where(eq(targets.id, id))
     .returning();
 
-  if (updatedTarget.categoryId) {
-    const amountMap = await batchComputeAmounts(user.id, [updatedTarget.categoryId]);
-    return c.json({ ...updatedTarget, currentAmount: amountMap.get(updatedTarget.categoryId) ?? updatedTarget.currentAmount }, 200);
+  if (updatedTarget.accountId) {
+    const balanceMap = await batchAccountBalances(user.id, [updatedTarget.accountId]);
+    return c.json({ ...updatedTarget, currentAmount: balanceMap.get(updatedTarget.accountId) ?? updatedTarget.currentAmount }, 200);
   }
 
   return c.json(updatedTarget, 200);
@@ -208,7 +227,6 @@ app.openapi({
   const existing = await db.query.targets.findFirst({
     where: and(eq(targets.id, id), eq(targets.userId, user.id)),
   });
-
   if (!existing) throw new HTTPException(404, { message: 'Target not found' });
 
   await db.delete(targets).where(eq(targets.id, id));

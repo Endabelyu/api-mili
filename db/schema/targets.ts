@@ -1,7 +1,7 @@
-import { pgTable, uuid, varchar, text, decimal, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, decimal, timestamp, index, boolean } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users';
-import { categories } from './categories';
+import { accounts } from './accounts';
 
 export const targets = pgTable('targets', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -13,7 +13,8 @@ export const targets = pgTable('targets', {
   color: varchar('color', { length: 7 }).notNull().default('#15803D'),
   icon: varchar('icon', { length: 50 }).notNull().default('🎯'),
   status: varchar('status', { length: 20 }).notNull().default('active'), // 'active' | 'completed' | 'paused'
-  categoryId: varchar('category_id').references(() => categories.id),
+  pinned: boolean('pinned').notNull().default(false),
+  accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow(),
 }, (table) => {
@@ -24,7 +25,7 @@ export const targets = pgTable('targets', {
 
 export const targetsRelations = relations(targets, ({ one }) => ({
   user: one(users, { fields: [targets.userId], references: [users.id] }),
-  category: one(categories, { fields: [targets.categoryId], references: [categories.id] }),
+  account: one(accounts, { fields: [targets.accountId], references: [accounts.id] }),
 }));
 
 export type Target = typeof targets.$inferSelect;
