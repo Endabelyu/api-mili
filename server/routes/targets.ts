@@ -45,7 +45,7 @@ const targetResponseSchema = z.object({
   name: z.string(),
   targetAmount: z.string(),
   currentAmount: z.string(),
-  deadline: z.any().nullable(),
+  deadline: z.string().nullable(),
   color: z.string(),
   icon: z.string(),
   status: z.string(),
