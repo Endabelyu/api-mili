@@ -23,7 +23,7 @@ const listQuerySchema = z.object({
   account: z.string().optional(),
   search: z.string().max(100).trim().optional(),
   page: z.string().optional().default('1'),
-  limit: z.string().optional().default('20').transform(Number).refine(n => n >= 1 && n <= 1000, 'Limit must be 1–1000').transform(String),
+  limit: z.string().optional().default('20').transform(Number).refine(n => n >= 1 && n <= 200, 'Limit must be 1–200').transform(String),
 });
 
 app.openapi({
