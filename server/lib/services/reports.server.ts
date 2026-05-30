@@ -95,7 +95,7 @@ export async function getMonthlyTrend(userId: string, months = 6) {
     .from(transactions)
     .where(and(
       eq(transactions.userId, userId),
-      sql`${transactions.date} >= ${startDate}::date`
+      sql`${transactions.date} >= ${startDate}::timestamp`
     ))
     .groupBy(sql`to_char(${transactions.date}, 'YYYY-MM')`, transactions.type)
     .orderBy(sql`to_char(${transactions.date}, 'YYYY-MM')`);

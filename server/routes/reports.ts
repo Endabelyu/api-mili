@@ -40,7 +40,7 @@ app.openapi({
     const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
     const nextYear = monthNum === 12 ? year + 1 : year;
     const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
-    dateCondition = sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`;
+    dateCondition = sql`${transactions.date} >= ${startDate}::timestamp AND ${transactions.date} < ${endDate}::timestamp`;
   }
 
   const baseCondition = eq(transactions.userId, user.id);
@@ -114,7 +114,7 @@ app.openapi({
     const nextMonth = monthNum === 12 ? 1 : monthNum + 1;
     const nextYear = monthNum === 12 ? year + 1 : year;
     const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
-    dateCondition = sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`;
+    dateCondition = sql`${transactions.date} >= ${startDate}::timestamp AND ${transactions.date} < ${endDate}::timestamp`;
   }
 
   const baseCondition = eq(transactions.userId, user.id);

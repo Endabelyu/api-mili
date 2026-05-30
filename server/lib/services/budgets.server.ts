@@ -21,7 +21,7 @@ export async function listBudgetsWithSpending(userId: string, month: string) {
     .where(and(
       eq(transactions.userId, userId),
       eq(transactions.type, 'expense'),
-      sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`
+      sql`${transactions.date} >= ${startDate}::timestamp AND ${transactions.date} < ${endDate}::timestamp`
     ))
     .groupBy(transactions.categoryId);
 

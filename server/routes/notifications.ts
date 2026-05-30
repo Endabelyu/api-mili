@@ -83,7 +83,7 @@ app.openapi({
       and(
         eq(transactions.userId, user.id),
         eq(transactions.type, 'expense'),
-        sql`${transactions.date} >= ${startDate}::date AND ${transactions.date} < ${endDate}::date`
+        sql`${transactions.date} >= ${startDate}::timestamp AND ${transactions.date} < ${endDate}::timestamp`
       )
     )
     .groupBy(transactions.categoryId);
