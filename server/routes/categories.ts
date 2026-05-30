@@ -47,7 +47,7 @@ const createCategorySchema = z.object({
   type: z.enum(['income', 'expense', 'both'])
 });
 
-const categoryWriteLimiter = createRateLimiter(20, 60_000); // 20/min
+const categoryWriteLimiter = createRateLimiter(5, 60_000); // 5/min — categories are global, limit spam
 
 app.use('*', async (c, next) => {
   if (c.req.method !== 'GET') {

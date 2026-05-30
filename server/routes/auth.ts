@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
 import { auth } from '@server/lib/auth';
+import { createRateLimiter } from '@server/lib/rate-limit';
 
 const app = new Hono();
+
+// Strict rate limit on auth endpoints to prevent brute-force attacks
+const authLimiter = createRateLimiter(10, 60_000); // 10 attempts/min per IP
+app.use('*', authLimiter);
 
 /**
  * GET /api/auth/me — returns current user session.

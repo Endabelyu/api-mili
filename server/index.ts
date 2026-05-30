@@ -34,7 +34,15 @@ app.use(cors({
       'https://mili.endabelyu.com',
       'https://mili-api.endabelyu.com',
     ];
-    if (!origin || allowedOrigins.some(o => origin.startsWith(o)) || origin.endsWith('.endabelyu.com')) return origin || '*';
+    if (!origin) return '*';
+    // Strict origin match — no prefix/suffix tricks
+    if (allowedOrigins.includes(origin)) return origin;
+    // Allow *.endabelyu.my.id subdomains (exact hostname check)
+    try {
+      const url = new URL(origin);
+      if (url.hostname === 'endabelyu.my.id' || url.hostname.endsWith('.endabelyu.my.id')) return origin;
+      if (url.hostname === 'endabelyu.com' || url.hostname.endsWith('.endabelyu.com')) return origin;
+    } catch { /* invalid origin */ }
     return null;
   },
   credentials: true,

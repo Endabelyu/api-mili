@@ -75,9 +75,17 @@ export function createRateLimiter(limit: number, windowMs: number) {
     limit,
     standardHeaders: 'draft-6', 
     keyGenerator: (c) => {
-      return c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 
-             c.req.header('x-real-ip') || 
-             'unknown-ip';
+      // Use x-real-ip (set by trusted reverse proxy) first,
+      // then rightmost x-forwarded-for (closest to proxy, hardest to spoof),
+      // never trust leftmost (client-supplied).
+      const realIp = c.req.header('x-real-ip');
+      if (realIp) return realIp.trim();
+      const forwarded = c.req.header('x-forwarded-for');
+      if (forwarded) {
+        const parts = forwarded.split(',').map(s => s.trim()).filter(Boolean);
+        return parts[parts.length - 1] || 'unknown-ip';
+      }
+      return 'unknown-ip';
     },
     ...(isProd ? { store: new PostgresStore(windowMs) } : {}),
     message: { error: 'Too many requests, please slow down.' },
