@@ -4,6 +4,7 @@ import { categories } from '@db/schema';
 import { asc } from 'drizzle-orm';
 import { requireAuth } from '@server/lib/auth-middleware.server';
 import { createRateLimiter } from '@server/lib/rate-limit';
+import { HTTPException } from 'hono/http-exception';
 
 const app = new OpenAPIHono();
 const API_TAGS = ['Categories'];
@@ -99,6 +100,11 @@ app.openapi({
   tags: API_TAGS
 }, async (c) => {
   await categoryWriteLimiter(c, async () => {});
+
+  const user = c.get('user') as { id: string; role?: string };
+  if (user.role !== 'developer') {
+    throw new HTTPException(403, { message: 'Only developers can create categories' });
+  }
 
   const { label, color, icon, type } = c.req.valid('json');
 
