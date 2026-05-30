@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, decimal, timestamp, text, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, decimal, timestamp, text, index, boolean } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users';
 import { categories } from './categories';
@@ -9,6 +9,7 @@ export const budgets = pgTable('budgets', {
   categoryId: varchar('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
   limitAmount: decimal('limit_amount', { precision: 15, scale: 2 }).notNull(),
   month: varchar('month', { length: 7 }).notNull(), // 'YYYY-MM'
+  recurring: boolean('recurring').notNull().default(true),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
 }, (table) => [
   index('idx_budgets_user_month').on(table.userId, table.month),

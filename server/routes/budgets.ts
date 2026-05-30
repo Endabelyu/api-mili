@@ -43,6 +43,7 @@ app.openapi({
               spent: z.string(),
               remaining: z.string(),
               percentageUsed: z.number(),
+              recurring: z.boolean(),
               category: z.object({
                 id: z.string(),
                 label: z.string(),
@@ -63,12 +64,45 @@ app.openapi({
   const month = validMonth || new Date().toISOString().slice(0, 7); // Default to current YYYY-MM
 
   // Get budgets for the user and month
-  const userBudgets = await db.query.budgets.findMany({
+  let userBudgets = await db.query.budgets.findMany({
     where: and(eq(budgets.userId, user.id), eq(budgets.month, month)),
     with: {
       category: true,
     },
   });
+
+  // Auto-clone recurring budgets from previous month if current month is empty
+  if (userBudgets.length === 0) {
+    const [y, m] = month.split('-').map(Number);
+    const prevDate = new Date(y, m - 2, 1); // month-1 (0-indexed) then -1 more for previous
+    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const prevBudgets = await db.query.budgets.findMany({
+      where: and(
+        eq(budgets.userId, user.id),
+        eq(budgets.month, prevMonth),
+        eq(budgets.recurring, true)
+      ),
+    });
+
+    if (prevBudgets.length > 0) {
+      const cloned = await db.insert(budgets).values(
+        prevBudgets.map(b => ({
+          userId: user.id,
+          categoryId: b.categoryId,
+          limitAmount: b.limitAmount,
+          month,
+          recurring: true,
+        }))
+      ).returning();
+
+      // Re-fetch with category relations
+      userBudgets = await db.query.budgets.findMany({
+        where: and(eq(budgets.userId, user.id), eq(budgets.month, month)),
+        with: { category: true },
+      });
+    }
+  }
 
   // Build correct month boundaries
   const startDate = `${month}-01`;
@@ -121,6 +155,7 @@ const upsertSchema = z.object({
     return num.toFixed(2);
   }),
   month: z.string().regex(/^\d{4}-\d{2}$/),
+  recurring: z.boolean().optional().default(true),
 });
 
 app.openapi({
@@ -225,6 +260,7 @@ app.openapi({
       categoryId: data.categoryId,
       limitAmount: data.limitAmount,
       month: data.month,
+      recurring: data.recurring,
     })
     .returning();
 
@@ -246,7 +282,8 @@ const updateSchema = z.object({
   limitAmount: z.union([z.string(), z.number()]).transform((v) => {
     const num = typeof v === 'string' ? parseFloat(v) : v;
     return num.toFixed(2);
-  }),
+  }).optional(),
+  recurring: z.boolean().optional(),
 });
 
 app.openapi({
@@ -271,7 +308,7 @@ app.openapi({
 }, async (c) => {
   const user = c.get('user') as { id: string };
   const { id } = c.req.valid('param');
-  const { limitAmount } = c.req.valid('json');
+  const { limitAmount, recurring } = c.req.valid('json');
 
   // Check ownership
   const existing = await db.query.budgets.findFirst({
@@ -287,11 +324,13 @@ app.openapi({
   }
 
   // Update budget
+  const updateData: Record<string, unknown> = {};
+  if (limitAmount !== undefined) updateData.limitAmount = limitAmount;
+  if (recurring !== undefined) updateData.recurring = recurring;
+
   const result = await db
     .update(budgets)
-    .set({
-      limitAmount,
-    })
+    .set(updateData)
     .where(eq(budgets.id, id))
     .returning();
 
