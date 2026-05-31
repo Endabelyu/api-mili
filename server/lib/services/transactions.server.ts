@@ -27,7 +27,7 @@ export async function listTransactions(options: ListTransactionsOptions) {
     const endDate = nextMonth.toISOString().slice(0, 10);
     
     conditions.push(
-      sql`${transactions.date} >= ${startDate} AND ${transactions.date} < ${endDate}`
+      sql`${transactions.date} >= ${startDate}::timestamp AND ${transactions.date} < ${endDate}::timestamp`
     );
   }
 
