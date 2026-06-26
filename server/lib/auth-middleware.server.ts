@@ -1,5 +1,8 @@
 import { MiddlewareHandler } from 'hono';
 import { auth } from './auth';
+import { db } from './db';
+import { users } from '@db/schema';
+import { eq } from 'drizzle-orm';
 
 /**
  * Require authentication middleware - returns 401 if not authenticated
@@ -20,6 +23,18 @@ export const requireAuth: MiddlewareHandler = async (c, next) => {
   }
 
   c.set('user', session.user);
+
+  // Background update lastSeenAt (throttled to 5 mins)
+  const now = new Date();
+  const lastSeen = session.user.lastSeenAt ? new Date(session.user.lastSeenAt) : null;
+  if (!lastSeen || (now.getTime() - lastSeen.getTime() > 5 * 60 * 1000)) {
+    db.update(users)
+      .set({ lastSeenAt: now })
+      .where(eq(users.id, session.user.id))
+      .execute()
+      .catch(err => console.error('Failed to update lastSeenAt', err));
+  }
+
   await next();
 };
 
