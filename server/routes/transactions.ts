@@ -1,6 +1,7 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { requireAuth } from '@server/lib/auth-middleware.server';
 import { writeLimiter, readLimiter } from '@server/lib/rate-limit';
+import { getClientIp } from '@server/lib/activity-logger';
 import * as transactionService from '@server/lib/services/transactions.server';
 import { logActivity } from '@server/lib/activity-logger';
 import { HTTPException } from 'hono/http-exception';
@@ -167,7 +168,7 @@ app.openapi({
       'CREATE_TRANSACTION', 
       `Created ${data.type} transaction for ${data.amount}`, 
       { categoryId: data.categoryId },
-      c.req.header('x-forwarded-for')
+      getClientIp(c)
     );
     
     return c.json(result, 201);
@@ -225,7 +226,7 @@ app.openapi({
       'UPDATE_TRANSACTION', 
       `Updated transaction ${id}`, 
       { transactionId: id, updates: data },
-      c.req.header('x-forwarded-for')
+      getClientIp(c)
     );
     
     return c.json(result);
@@ -264,7 +265,7 @@ app.openapi({
       'DELETE_TRANSACTION', 
       `Deleted transaction ${id}`, 
       { transactionId: id },
-      c.req.header('x-forwarded-for')
+      getClientIp(c)
     );
     
     return c.json(result);

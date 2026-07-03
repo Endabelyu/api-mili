@@ -29,11 +29,12 @@ export function initSentry() {
     ],
 
     beforeSend(event) {
-      // Strip any accidentally included auth tokens from request headers
       if (event.request?.headers) {
         delete event.request.headers['cookie'];
         delete event.request.headers['authorization'];
       }
+      // Strip request body — may contain financial data or PII
+      delete event.request?.data;
       return event;
     },
   });
