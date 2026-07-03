@@ -10,11 +10,13 @@ const API_TAGS = ['Transactions'];
 
 // Apply auth middleware to all routes
 app.use('*', requireAuth);
-// Rate limiting
-app.use('GET /*', readLimiter);
-app.use('POST /*', writeLimiter);
-app.use('PUT /*', writeLimiter);
-app.use('DELETE /*', writeLimiter);
+// Rate limiting — method-based (Hono parses 'POST /*' as path, not method+path)
+app.use('*', async (c, next) => {
+  if (c.req.method === 'GET' || c.req.method === 'HEAD') {
+    return readLimiter(c, next);
+  }
+  return writeLimiter(c, next);
+});
 
 const listQuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -178,11 +180,11 @@ app.openapi({
 // PUT /api/transactions/:id - Update transaction (owner check)
 const updateSchema = z.object({
   type: z.enum(['income', 'expense', 'transfer']).optional(),
-  amount: z.union([z.string(), z.number()]).optional().transform((v) => {
-    if (v === undefined) return undefined;
-    const num = typeof v === 'string' ? parseFloat(v) : v;
-    return num.toFixed(2);
-  }),
+  amount: z.union([z.string(), z.number()])
+    .transform(v => typeof v === 'string' ? parseFloat(v) : v)
+    .refine(v => Number.isFinite(v) && v > 0, 'Amount must be a positive number')
+    .transform(v => v.toFixed(2))
+    .optional(),
   categoryId: z.string().optional(),
   accountId: z.string().optional(),
   toAccountId: z.string().optional(),

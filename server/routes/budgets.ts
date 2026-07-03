@@ -11,11 +11,13 @@ const API_TAGS = ['Budgets'];
 
 // Apply auth middleware to all routes
 app.use('*', requireAuth);
-// Rate limiting
-app.use('GET /*', readLimiter);
-app.use('POST /*', writeLimiter);
-app.use('PUT /*', writeLimiter);
-app.use('DELETE /*', writeLimiter);
+// Rate limiting — method-based (Hono parses 'POST /*' as path, not method+path)
+app.use('*', async (c, next) => {
+  if (c.req.method === 'GET' || c.req.method === 'HEAD') {
+    return readLimiter(c, next);
+  }
+  return writeLimiter(c, next);
+});
 
 const listQuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),

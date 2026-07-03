@@ -11,7 +11,7 @@ const API_TAGS = ['OCR'];
 
 // Auth + rate limit
 app.use('*', requireAuth);
-app.use('POST /*', writeLimiter);
+app.use('*', writeLimiter);
 
 async function checkQuota(userId: string): Promise<boolean> {
   const today = new Date().toISOString().slice(0, 10);

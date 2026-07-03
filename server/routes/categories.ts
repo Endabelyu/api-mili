@@ -12,6 +12,11 @@ const categoryWriteLimiter = createRateLimiter(10, 60_000); // 10/min per IP
 
 // Auth required for all routes
 app.use('*', requireAuth);
+// Rate limit write operations (POST/PUT/DELETE) — registered as middleware, not inline call
+app.use('*', async (c, next) => {
+  if (c.req.method === 'GET' || c.req.method === 'HEAD') return next();
+  return categoryWriteLimiter(c, next);
+});
 
 // ─── GET / — List categories (system defaults + user's own) ─────────────────
 app.openapi({
@@ -94,8 +99,6 @@ app.openapi({
   },
   tags: API_TAGS
 }, async (c) => {
-  await categoryWriteLimiter(c, async () => {});
-
   const user = c.get('user') as { id: string };
   const { label, color, icon, type } = c.req.valid('json');
 

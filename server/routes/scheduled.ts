@@ -15,7 +15,10 @@ app.use('*', requireAuth);
 
 const createScheduledSchema = z.object({
   type: z.enum(['income', 'expense', 'transfer']),
-  amount: z.string().or(z.number()).transform(v => String(v)),
+  amount: z.union([z.string(), z.number()])
+    .transform(v => typeof v === 'string' ? parseFloat(v) : v)
+    .refine(v => Number.isFinite(v) && v > 0, 'Amount must be a positive number')
+    .transform(v => v.toFixed(2)),
   categoryId: z.string().min(1),
   accountId: z.string().uuid().optional().nullable(),
   toAccountId: z.string().uuid().optional().nullable(),
@@ -52,6 +55,15 @@ app.post('/', zValidator('json', createScheduledSchema), async (c) => {
 
   const data = c.req.valid('json');
   const nextRun = new Date(data.nextRunDate);
+
+  if (data.accountId) {
+    const acct = await db.query.accounts.findFirst({ where: eq(accounts.id, data.accountId) });
+    if (!acct || acct.userId !== user.id) throw new HTTPException(400, { message: 'Invalid account' });
+  }
+  if (data.toAccountId) {
+    const acct = await db.query.accounts.findFirst({ where: eq(accounts.id, data.toAccountId) });
+    if (!acct || acct.userId !== user.id) throw new HTTPException(400, { message: 'Invalid destination account' });
+  }
 
   const [newScheduled] = await db.insert(scheduledTransactions)
     .values({
@@ -134,35 +146,35 @@ app.post('/:id/post', async (c) => {
   if (!scheduled) throw new HTTPException(404, { message: 'Scheduled transaction not found' });
 
   try {
-    return await db.transaction(async (tx) => {
-      // 1. Create the actual transaction
-      await transactionService.createTransaction({
-        userId: user.id,
-        type: scheduled.type as 'income' | 'expense' | 'transfer',
-        amount: String(scheduled.amount),
-        categoryId: scheduled.categoryId,
-        accountId: scheduled.accountId || undefined,
-        toAccountId: scheduled.toAccountId || undefined,
-        description: scheduled.description || `Scheduled: ${scheduled.description || 'Auto-generated'}`,
-        date: new Date().toISOString().split('T')[0], // Today's date
-      });
+    // Advance nextRunDate FIRST with optimistic lock to prevent concurrent double-execution
+    const nextRun = calculateNextRunDate(new Date(scheduled.nextRunDate), scheduled.frequency);
+    const [locked] = await db.update(scheduledTransactions)
+      .set({ nextRunDate: nextRun, updatedAt: new Date() })
+      .where(and(
+        eq(scheduledTransactions.id, id),
+        eq(scheduledTransactions.nextRunDate, scheduled.nextRunDate), // optimistic lock
+      ))
+      .returning();
 
-      // 2. Update next run date
-      const nextRun = calculateNextRunDate(new Date(scheduled.nextRunDate), scheduled.frequency);
+    if (!locked) {
+      return c.json({ error: 'Concurrent modification detected, try again' }, 409);
+    }
 
-      const [updated] = await tx.update(scheduledTransactions)
-        .set({
-          nextRunDate: nextRun,
-          updatedAt: new Date(),
-        })
-        .where(eq(scheduledTransactions.id, id))
-        .returning();
-
-      return c.json({ success: true, item: updated });
+    await transactionService.createTransaction({
+      userId: user.id,
+      type: scheduled.type as 'income' | 'expense' | 'transfer',
+      amount: String(scheduled.amount),
+      categoryId: scheduled.categoryId,
+      accountId: scheduled.accountId || undefined,
+      toAccountId: scheduled.toAccountId || undefined,
+      description: scheduled.description || undefined,
+      date: new Date().toISOString().split('T')[0],
     });
+
+    return c.json({ success: true, item: locked });
   } catch (err) {
-    const error = err as Error;
-    return c.json({ error: error.message }, 400);
+    const isProd = process.env.NODE_ENV === 'production';
+    return c.json({ error: isProd ? 'Failed to execute scheduled transaction' : (err as Error).message }, 400);
   }
 });
 

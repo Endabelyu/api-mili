@@ -83,7 +83,7 @@ export function createRateLimiter(limit: number, windowMs: number) {
       const forwarded = c.req.header('x-forwarded-for');
       if (forwarded) {
         const parts = forwarded.split(',').map(s => s.trim()).filter(Boolean);
-        return parts[parts.length - 1] || 'unknown-ip';
+        return parts[0] || 'unknown-ip'; // leftmost = original client IP (Nginx appends, not overwrites)
       }
       return 'unknown-ip';
     },

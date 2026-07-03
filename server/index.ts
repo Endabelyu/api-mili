@@ -58,21 +58,21 @@ app.use(async (c, next) => {
   
   const csrfMiddleware = csrf({
     origin: (origin) => {
+      if (!origin) return false;
       const envOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean) : ['http://localhost:5174'];
-      const allowedOrigins = [
+      const allowedOrigins = new Set([
         ...envOrigins,
         'http://localhost:5173',
         'http://localhost:4016',
         'http://localhost:3000',
-        'https://finance-web.endabelyu.com',
-        'https://finance-api.endabelyu.com',
-        'http://finance-web.endabelyu.com',
-        'http://finance-api.endabelyu.com'
-      ];
-      // In production require exact match or subdomain match.
-      // In dev allow localhost
-      if (!origin) return false;
-      return allowedOrigins.some(o => origin.startsWith(o)) || origin.endsWith('.endabelyu.com');
+        'https://mili.endabelyu.com',
+        'https://mili-api.endabelyu.com',
+      ]);
+      if (allowedOrigins.has(origin)) return true;
+      try {
+        const url = new URL(origin);
+        return url.hostname === 'endabelyu.com' || url.hostname.endsWith('.endabelyu.com');
+      } catch { return false; }
     }
   });
   

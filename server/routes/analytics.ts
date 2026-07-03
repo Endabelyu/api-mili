@@ -51,7 +51,15 @@ analytics.get('/users', async (c) => {
   const limit = Math.min(200, Math.max(1, Number(c.req.query('limit') || '100')));
   const offset = (page - 1) * limit;
 
-  const userList = await db.select().from(users).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
+  const userList = await db.select({
+    id: users.id,
+    email: users.email,
+    name: users.name,
+    role: users.role,
+    banned: users.banned,
+    lastSeenAt: users.lastSeenAt,
+    createdAt: users.createdAt,
+  }).from(users).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
   return c.json(userList);
 });
 

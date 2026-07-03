@@ -1,4 +1,4 @@
-import { eq, and, or, ilike, desc, sql, SQL } from 'drizzle-orm';
+import { eq, and, or, isNull, ilike, desc, sql, SQL } from 'drizzle-orm';
 import { db } from '@server/lib/db';
 import { transactions, categories, accounts } from '@db/schema';
 import { processTransactionBalance } from './accounts.server';
@@ -107,7 +107,10 @@ export interface CreateTransactionInput {
 
 export async function createTransaction(input: CreateTransactionInput) {
   const category = await db.query.categories.findFirst({
-    where: eq(categories.id, input.categoryId),
+    where: and(
+      eq(categories.id, input.categoryId),
+      or(isNull(categories.userId), eq(categories.userId, input.userId))
+    ),
   });
 
   if (!category) {
@@ -179,7 +182,10 @@ export async function updateTransaction(id: string, userId: string, input: Updat
 
     if (input.categoryId) {
       const category = await tx.query.categories.findFirst({
-        where: eq(categories.id, input.categoryId),
+        where: and(
+          eq(categories.id, input.categoryId),
+          or(isNull(categories.userId), eq(categories.userId, userId))
+        ),
       });
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 400 });
