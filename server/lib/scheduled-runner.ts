@@ -53,25 +53,36 @@ export async function runDueScheduledTransactions(): Promise<void> {
 
   for (const scheduled of due) {
     try {
-      await createTransaction({
-        userId: scheduled.userId,
-        type: scheduled.type as 'income' | 'expense' | 'transfer',
-        amount: String(scheduled.amount),
-        categoryId: scheduled.categoryId,
-        accountId: scheduled.accountId ?? undefined,
-        toAccountId: scheduled.toAccountId ?? undefined,
-        description: scheduled.description ?? undefined,
-        date: now.toISOString().split('T')[0],
-      });
+      // Catch-up loop: create one transaction per missed occurrence, capped at 12
+      // to avoid flooding months of backlog in one shot.
+      let baseDate = new Date(scheduled.nextRunDate);
+      let created = 0;
+      const MAX_CATCH_UP = 12;
 
-      const nextRun = calculateNextRunDate(new Date(scheduled.nextRunDate), scheduled.frequency);
+      while (baseDate <= now && created < MAX_CATCH_UP) {
+        // Use the actual scheduled date, not today — so "gaji tgl 25" is recorded on the 25th
+        await createTransaction({
+          userId: scheduled.userId,
+          type: scheduled.type as 'income' | 'expense' | 'transfer',
+          amount: String(scheduled.amount),
+          categoryId: scheduled.categoryId,
+          accountId: scheduled.accountId ?? undefined,
+          toAccountId: scheduled.toAccountId ?? undefined,
+          description: scheduled.description ?? undefined,
+          date: baseDate.toISOString().split('T')[0],
+        });
 
+        baseDate = calculateNextRunDate(baseDate, scheduled.frequency);
+        created++;
+      }
+
+      // Advance nextRunDate to first future occurrence
       await db
         .update(scheduledTransactions)
-        .set({ nextRunDate: nextRun, updatedAt: new Date() })
+        .set({ nextRunDate: baseDate, updatedAt: new Date() })
         .where(eq(scheduledTransactions.id, scheduled.id));
 
-      succeeded++;
+      succeeded += created;
     } catch (err) {
       failed++;
       logger.error('Scheduled runner: failed to process transaction', {
