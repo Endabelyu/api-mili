@@ -88,15 +88,24 @@ app.openapi({
     });
 
     if (prevBudgets.length > 0) {
-      const cloned = await db.insert(budgets).values(
-        prevBudgets.map(b => ({
-          userId: user.id,
-          categoryId: b.categoryId,
-          limitAmount: b.limitAmount,
-          month,
-          recurring: true,
-        }))
-      ).returning();
+      await db.transaction(async (tx) => {
+        // Re-check inside transaction — guards against concurrent clone requests
+        // for the same empty month (two GETs arriving simultaneously)
+        const alreadyCloned = await tx.query.budgets.findFirst({
+          where: and(eq(budgets.userId, user.id), eq(budgets.month, month)),
+        });
+        if (alreadyCloned) return;
+
+        await tx.insert(budgets).values(
+          prevBudgets.map(b => ({
+            userId: user.id,
+            categoryId: b.categoryId,
+            limitAmount: b.limitAmount,
+            month,
+            recurring: true,
+          }))
+        );
+      });
 
       // Re-fetch with category relations
       userBudgets = await db.query.budgets.findMany({

@@ -34,6 +34,8 @@ export function calculateNextRunDate(current: Date, frequency: string): Date {
   return next;
 }
 
+// Single-process mutex — prevents startup + interval overlap within one process.
+// Not safe for multi-instance deployments; use a DB advisory lock if scaling horizontally.
 let isRunning = false;
 
 export async function runDueScheduledTransactions(): Promise<void> {
