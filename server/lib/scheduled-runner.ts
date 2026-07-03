@@ -34,66 +34,83 @@ export function calculateNextRunDate(current: Date, frequency: string): Date {
   return next;
 }
 
+let isRunning = false;
+
 export async function runDueScheduledTransactions(): Promise<void> {
-  const now = new Date();
+  if (isRunning) return;
+  isRunning = true;
 
-  const due = await db.query.scheduledTransactions.findMany({
-    where: and(
-      eq(scheduledTransactions.status, 'active'),
-      lte(scheduledTransactions.nextRunDate, now)
-    ),
-  });
+  try {
+    const now = new Date();
 
-  if (due.length === 0) return;
+    const due = await db.query.scheduledTransactions.findMany({
+      where: and(
+        eq(scheduledTransactions.status, 'active'),
+        lte(scheduledTransactions.nextRunDate, now)
+      ),
+    });
 
-  logger.info('Scheduled runner: processing due transactions', { count: due.length });
+    if (due.length === 0) return;
 
-  let succeeded = 0;
-  let failed = 0;
+    logger.info('Scheduled runner: processing due transactions', { count: due.length });
 
-  for (const scheduled of due) {
-    try {
-      // Catch-up loop: create one transaction per missed occurrence, capped at 12
-      // to avoid flooding months of backlog in one shot.
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const scheduled of due) {
       let baseDate = new Date(scheduled.nextRunDate);
       let created = 0;
       const MAX_CATCH_UP = 12;
 
       while (baseDate <= now && created < MAX_CATCH_UP) {
-        // Use the actual scheduled date, not today — so "gaji tgl 25" is recorded on the 25th
-        await createTransaction({
-          userId: scheduled.userId,
-          type: scheduled.type as 'income' | 'expense' | 'transfer',
-          amount: String(scheduled.amount),
-          categoryId: scheduled.categoryId,
-          accountId: scheduled.accountId ?? undefined,
-          toAccountId: scheduled.toAccountId ?? undefined,
-          description: scheduled.description ?? undefined,
-          date: baseDate.toISOString().split('T')[0],
-        });
+        try {
+          // Use the actual scheduled date so "gaji tgl 25" records on the 25th
+          await createTransaction({
+            userId: scheduled.userId,
+            type: scheduled.type as 'income' | 'expense' | 'transfer',
+            amount: String(scheduled.amount),
+            categoryId: scheduled.categoryId,
+            accountId: scheduled.accountId ?? undefined,
+            toAccountId: scheduled.toAccountId ?? undefined,
+            description: scheduled.description ?? undefined,
+            date: baseDate.toISOString().split('T')[0],
+          });
 
-        baseDate = calculateNextRunDate(baseDate, scheduled.frequency);
-        created++;
+          const nextDate = calculateNextRunDate(baseDate, scheduled.frequency);
+
+          // Persist progress after each occurrence — prevents re-duplicating
+          // already-created transactions if a later occurrence throws
+          await db
+            .update(scheduledTransactions)
+            .set({ nextRunDate: nextDate, updatedAt: new Date() })
+            .where(eq(scheduledTransactions.id, scheduled.id));
+
+          baseDate = nextDate;
+          created++;
+          succeeded++;
+        } catch (err) {
+          failed++;
+          logger.error('Scheduled runner: failed to process transaction', {
+            scheduledId: scheduled.id,
+            userId: scheduled.userId,
+            frequency: scheduled.frequency,
+            occurrenceDate: baseDate.toISOString(),
+            error: err instanceof Error ? err.message : String(err),
+          });
+          break; // stop catch-up for this item; nextRunDate already points to the failed date
+        }
       }
 
-      // Advance nextRunDate to first future occurrence
-      await db
-        .update(scheduledTransactions)
-        .set({ nextRunDate: baseDate, updatedAt: new Date() })
-        .where(eq(scheduledTransactions.id, scheduled.id));
-
-      succeeded += created;
-    } catch (err) {
-      failed++;
-      logger.error('Scheduled runner: failed to process transaction', {
-        scheduledId: scheduled.id,
-        userId: scheduled.userId,
-        frequency: scheduled.frequency,
-        nextRunDate: scheduled.nextRunDate,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      if (created === MAX_CATCH_UP && baseDate <= now) {
+        logger.warn('Scheduled runner: hit catch-up cap, will resume next run', {
+          scheduledId: scheduled.id,
+          remaining: baseDate.toISOString(),
+        });
+      }
     }
-  }
 
-  logger.info('Scheduled runner: done', { succeeded, failed });
+    logger.info('Scheduled runner: done', { succeeded, failed });
+  } finally {
+    isRunning = false;
+  }
 }
