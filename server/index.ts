@@ -11,6 +11,7 @@ import { secureHeaders } from 'hono/secure-headers';
 
 import apiRoutes from './routes';
 import { monitoringMiddleware, getMetrics, getPrometheusMetrics, logMetricsSnapshot } from './lib/monitoring';
+import { runDueScheduledTransactions } from './lib/scheduled-runner';
 import { logger as appLogger } from './lib/logger';
 import { apiReference } from '@scalar/hono-api-reference';
 import { openApiSpec } from './openapi';
@@ -351,4 +352,15 @@ serve({
 }, (info: { port: number }) => {
   appLogger.info('Server running', { url: `http://localhost:${info.port}` });
   setInterval(logMetricsSnapshot, 5 * 60 * 1000).unref();
+
+  // Auto-run scheduled transactions every hour; also run once on startup to catch missed ones
+  const HOUR_MS = 60 * 60 * 1000;
+  runDueScheduledTransactions().catch(err =>
+    appLogger.error('Scheduled runner startup error', { error: err instanceof Error ? err.message : String(err) })
+  );
+  setInterval(() => {
+    runDueScheduledTransactions().catch(err =>
+      appLogger.error('Scheduled runner error', { error: err instanceof Error ? err.message : String(err) })
+    );
+  }, HOUR_MS).unref();
 });

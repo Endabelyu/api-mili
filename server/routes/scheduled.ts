@@ -7,36 +7,7 @@ import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '../lib/auth-middleware.server';
 import { HTTPException } from 'hono/http-exception';
 import * as transactionService from '../lib/services/transactions.server';
-
-function calculateNextRunDate(current: Date, frequency: string): Date {
-  const next = new Date(current);
-  switch (frequency) {
-    case 'daily':
-      next.setDate(next.getDate() + 1);
-      break;
-    case 'weekly':
-      next.setDate(next.getDate() + 7);
-      break;
-    case 'monthly': {
-      const originalDay = current.getDate();
-      next.setDate(1);
-      next.setMonth(next.getMonth() + 1);
-      const daysInMonth = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-      next.setDate(Math.min(originalDay, daysInMonth));
-      break;
-    }
-    case 'yearly': {
-      const originalDay = current.getDate();
-      const originalMonth = current.getMonth();
-      next.setFullYear(next.getFullYear() + 1);
-      const daysInMonth = new Date(next.getFullYear(), originalMonth + 1, 0).getDate();
-      next.setMonth(originalMonth);
-      next.setDate(Math.min(originalDay, daysInMonth));
-      break;
-    }
-  }
-  return next;
-}
+import { calculateNextRunDate } from '../lib/scheduled-runner';
 
 const app = new Hono();
 
