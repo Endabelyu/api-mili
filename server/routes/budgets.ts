@@ -1,5 +1,5 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { eq, and, sql, sum } from 'drizzle-orm';
+import { eq, and, sql, sum, lt, desc } from 'drizzle-orm';
 import { db } from '@server/lib/db';
 import { budgets, transactions, categories } from '@db/schema';
 import { requireAuth } from '@server/lib/auth-middleware.server';
@@ -73,31 +73,34 @@ app.openapi({
     },
   });
 
-  // Auto-clone recurring budgets from previous month if current month is empty
+  // Auto-clone recurring budgets if current month is empty.
+  // Search the most recent past month with recurring budgets — not just prevMonth —
+  // so skipped months don't break the chain.
   if (userBudgets.length === 0) {
-    const [y, m] = month.split('-').map(Number);
-    const prevDate = new Date(y, m - 2, 1); // month-1 (0-indexed) then -1 more for previous
-    const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
-
-    const prevBudgets = await db.query.budgets.findMany({
+    const allRecurring = await db.query.budgets.findMany({
       where: and(
         eq(budgets.userId, user.id),
-        eq(budgets.month, prevMonth),
-        eq(budgets.recurring, true)
+        eq(budgets.recurring, true),
+        lt(budgets.month, month)
       ),
+      orderBy: [desc(budgets.month)],
     });
 
-    if (prevBudgets.length > 0) {
+    const sourceMonth = allRecurring[0]?.month ?? null;
+    const sourceBudgets = sourceMonth
+      ? allRecurring.filter(b => b.month === sourceMonth)
+      : [];
+
+    if (sourceBudgets.length > 0) {
       await db.transaction(async (tx) => {
         // Re-check inside transaction — guards against concurrent clone requests
-        // for the same empty month (two GETs arriving simultaneously)
         const alreadyCloned = await tx.query.budgets.findFirst({
           where: and(eq(budgets.userId, user.id), eq(budgets.month, month)),
         });
         if (alreadyCloned) return;
 
         await tx.insert(budgets).values(
-          prevBudgets.map(b => ({
+          sourceBudgets.map(b => ({
             userId: user.id,
             categoryId: b.categoryId,
             limitAmount: b.limitAmount,
