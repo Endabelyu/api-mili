@@ -55,7 +55,7 @@ jobs:
       - name: Setup database
         run: bun run db:push
       - name: Run tests
-        run: bun test
+        run: bun run test
 
   deploy-production:
     name: Deploy to VPS
