@@ -110,7 +110,7 @@ jobs:
             docker compose --env-file .env up -d --force-recreate --no-deps app
             # Run migrations after app starts
             sleep 5
-            docker compose --env-file .env exec -T app bun run db:push || true
+            docker compose --env-file .env exec -T app npm run db:push || true
             docker image prune -f
             # Verify new routes are reachable
             sleep 3
