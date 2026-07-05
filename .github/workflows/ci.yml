@@ -6,33 +6,24 @@ on:
   pull_request:
     branches: [main, develop]
 
-env:
-  NODE_VERSION: '20'
-
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci --legacy-peer-deps
-      - run: npm run lint
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run lint
 
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci --legacy-peer-deps
-      - run: npm run type-check
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run type-check
 
   test:
     name: Test
@@ -58,15 +49,12 @@ jobs:
       NODE_ENV: test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci --legacy-peer-deps
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
       - name: Setup database
-        run: npm run db:push
+        run: bun run db:push
       - name: Run tests
-        run: npm test
+        run: bun test
 
   deploy-production:
     name: Deploy to VPS
@@ -96,7 +84,7 @@ jobs:
           username: ${{ secrets.VPS_USERNAME_CONTABO }}
           key: ${{ secrets.VPS_SSHKEY_CONTABO }}
           port: ${{ secrets.VPS_PORT_CONTABO || '22' }}
-          source: "server/,db/,package.json,package-lock.json,docker-compose.yml,Dockerfile,tsconfig.json,.dockerignore,deploy.sh"
+          source: "server/,db/,package.json,bun.lock,docker-compose.yml,Dockerfile,tsconfig.json,.dockerignore,deploy.sh"
           target: ${{ secrets.VPS_TARGET_DIR }}/
           overwrite: true
 
@@ -122,7 +110,7 @@ jobs:
             docker compose --env-file .env up -d --force-recreate --no-deps app
             # Run migrations after app starts
             sleep 5
-            docker compose --env-file .env exec -T app npm run db:push || true
+            docker compose --env-file .env exec -T app bun run db:push || true
             docker image prune -f
             # Verify new routes are reachable
             sleep 3
