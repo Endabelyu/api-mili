@@ -1,7 +1,7 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import { db } from '@server/lib/db';
-import { categories } from '@db/schema';
-import { asc, eq, or, isNull } from 'drizzle-orm';
+import { categories, hiddenCategories } from '@db/schema';
+import { asc, eq, or, isNull, and } from 'drizzle-orm';
 import { requireAuth } from '@server/lib/auth-middleware.server';
 import { createRateLimiter } from '@server/lib/rate-limit';
 import { HTTPException } from 'hono/http-exception';
@@ -19,10 +19,17 @@ app.use('*', async (c, next) => {
 });
 
 // ─── GET / — List categories (system defaults + user's own) ─────────────────
+const listQuerySchema = z.object({
+  includeHidden: z.string().optional().transform(v => v === 'true'),
+});
+
 app.openapi({
   method: 'get',
   path: '/',
   summary: 'Get all categories (system + user)',
+  request: {
+    query: listQuerySchema,
+  },
   responses: {
     200: {
       description: 'Success',
@@ -36,6 +43,7 @@ app.openapi({
               icon: z.string().nullable(),
               type: z.string(),
               isOwn: z.boolean(),
+              hidden: z.boolean().optional(),
             }))
           })
         }
@@ -45,18 +53,27 @@ app.openapi({
   tags: API_TAGS
 }, async (c) => {
   const user = c.get('user') as { id: string };
+  const { includeHidden } = c.req.valid('query');
 
-  const items = await db.query.categories.findMany({
-    where: or(isNull(categories.userId), eq(categories.userId, user.id)),
-    orderBy: [asc(categories.label)],
-  });
+  const [hiddenRows, allItems] = await Promise.all([
+    db.query.hiddenCategories.findMany({
+      where: eq(hiddenCategories.userId, user.id),
+    }),
+    db.query.categories.findMany({
+      where: or(isNull(categories.userId), eq(categories.userId, user.id)),
+      orderBy: [asc(categories.label)],
+    }),
+  ]);
 
-  return c.json({
-    items: items.map(item => ({
-      ...item,
-      isOwn: item.userId === user.id,
-    })),
-  }, 200);
+  const hiddenIds = new Set(hiddenRows.map(h => h.categoryId));
+
+  const items = includeHidden
+    ? allItems.map(item => ({ ...item, isOwn: item.userId === user.id, hidden: hiddenIds.has(item.id) }))
+    : allItems
+        .filter(item => !hiddenIds.has(item.id))
+        .map(item => ({ ...item, isOwn: item.userId === user.id }));
+
+  return c.json({ items }, 200);
 });
 
 // ─── POST / — Create user category ─────────────────────────────────────────
@@ -117,6 +134,66 @@ app.openapi({
   return c.json(newItem, 201);
 });
 
+// ─── PATCH /:id/visibility — Hide or unhide a category ──────────────────────
+const visibilitySchema = z.object({
+  hidden: z.boolean(),
+});
+
+app.openapi({
+  method: 'patch',
+  path: '/{id}/visibility',
+  summary: 'Hide or unhide a category',
+  request: {
+    params: z.object({ id: z.string() }),
+    body: {
+      content: {
+        'application/json': {
+          schema: visibilitySchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      description: 'Visibility updated',
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            hidden: z.boolean(),
+          })
+        }
+      }
+    },
+    404: { description: 'Category not found' },
+  },
+  tags: API_TAGS
+}, async (c) => {
+  const user = c.get('user') as { id: string };
+  const { id } = c.req.valid('param');
+  const { hidden } = c.req.valid('json');
+
+  // Verify category exists and is accessible to this user
+  const category = await db.query.categories.findFirst({
+    where: and(eq(categories.id, id), or(isNull(categories.userId), eq(categories.userId, user.id))),
+  });
+
+  if (!category) {
+    throw new HTTPException(404, { message: 'Category not found' });
+  }
+
+  if (hidden) {
+    await db.insert(hiddenCategories)
+      .values({ userId: user.id, categoryId: id })
+      .onConflictDoNothing();
+  } else {
+    await db.delete(hiddenCategories)
+      .where(and(eq(hiddenCategories.userId, user.id), eq(hiddenCategories.categoryId, id)));
+  }
+
+  return c.json({ success: true, hidden }, 200);
+});
+
 // ─── DELETE /:id — Delete own category only ─────────────────────────────────
 app.openapi({
   method: 'delete',
@@ -129,6 +206,7 @@ app.openapi({
     200: { description: 'Deleted' },
     403: { description: 'Cannot delete system category' },
     404: { description: 'Not found' },
+    409: { description: 'Category has existing transactions' },
   },
   tags: API_TAGS
 }, async (c) => {
@@ -151,7 +229,15 @@ app.openapi({
     throw new HTTPException(403, { message: 'Forbidden' });
   }
 
-  await db.delete(categories).where(eq(categories.id, id));
+  try {
+    await db.delete(categories).where(eq(categories.id, id));
+  } catch (err: unknown) {
+    if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23503') {
+      throw new HTTPException(409, { message: 'Category has existing transactions. Hide it instead of deleting.' });
+    }
+    throw err;
+  }
+
   return c.json({ success: true });
 });
 

@@ -2,6 +2,7 @@ import { pgTable, varchar, text } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { transactions } from './transactions';
 import { users } from './users';
+import { hiddenCategories } from './hidden-categories';
 
 export const categories = pgTable('categories', {
   id: varchar('id').primaryKey(), // e.g., 'food', 'transport'
@@ -15,6 +16,7 @@ export const categories = pgTable('categories', {
 export const categoriesRelations = relations(categories, ({ many, one }) => ({
   transactions: many(transactions),
   user: one(users, { fields: [categories.userId], references: [users.id] }),
+  hiddenBy: many(hiddenCategories),
 }));
 
 export type Category = typeof categories.$inferSelect;

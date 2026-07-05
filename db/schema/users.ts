@@ -4,6 +4,7 @@ import { transactions } from './transactions';
 import { budgets } from './budgets';
 import { feedbacks } from './feedbacks';
 import { activityLogs } from './activity-logs';
+import { hiddenCategories } from './hidden-categories';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -23,6 +24,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   budgets: many(budgets),
   feedbacks: many(feedbacks),
   activityLogs: many(activityLogs),
+  hiddenCategories: many(hiddenCategories),
 }));
 
 export type User = typeof users.$inferSelect;
